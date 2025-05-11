@@ -29,15 +29,22 @@ map = {66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96}
 ch = 0
 page = 1
 step = 1
+step_count = 1
 last = 0
 note = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-stage_count = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+stage_counts = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 ticks = 0
 
 tick = function()
 	if last > 0 then midi_note_off(map[last]) end
-	-- todo: use stage_count to decide whether to move to next step.
-	step = (step % 16) + 1
+	-- stay on current step for number of counts specified in stage_counts.
+	if step_count < stage_counts[step] then
+		step_count = step_count + 1
+	else
+		step = (step % 16) + 1
+		step_count = 1
+	end
+	-- todo: might need to move things below this line elsewhere...
 	last = note[step]
 	if last > 0 then midi_note_on(map[last]) end
 	redraw()
@@ -74,7 +81,7 @@ handle_stage_count = function(x, y, z)
 	-- discard out-of-range button presses.
 	if y<=8 then return end
 	-- bottom row = 1, count up from there.
-	stage_count[x] = 17 - y
+	stage_counts[x] = 17 - y
 end
 
 redraw = function()
@@ -100,10 +107,10 @@ redraw_pitch = function()
 end
 
 redraw_stage_count = function()
-	-- todo: consider tweaking this to show whole row
+	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
 	for n=1,16 do
-		if stage_count[n] > 0 then
-			grid_led(n, 17 - stage_count[n], step==n and 15 or 5)
+		if stage_counts[n] > 0 then
+			grid_led(n, 17 - stage_counts[n], step==n and 15 or 5)
 		end
 	end
 end
