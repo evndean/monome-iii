@@ -18,8 +18,6 @@
 --   - sequence chaining.
 --   - adjust notes, tuning on device.
 
--- using step.lua from the monome iii repo as a starting point.
-
 print("miii85 start")
 
 -- change this to toggle clock input:
@@ -33,44 +31,62 @@ page = 1
 step = 1
 last = 0
 note = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+stage_count = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 ticks = 0
 
 tick = function()
 	if last > 0 then midi_note_off(map[last]) end
+	-- todo: use stage_count to decide whether to move to next step.
 	step = (step % 16) + 1
 	last = note[step]
 	if last > 0 then midi_note_on(map[last]) end
 	redraw()
 end
 
-grid = function(x,y,z)
+grid = function(x, y, z)
 	-- button released; ignore.
 	if z==0 then return end
 	if y==1 then
 		-- top row; ignore button presses.
 	elseif y==2 then
-		-- second row; todo implement page switching.
+		-- second row; switch pages if in range.
+		if x<=2 then
+			page=x
+		end
 	else
 		if page==1 then
-			handle_pitch(x,y,x)
+			handle_pitch(x, y, x)
+		elseif page==2 then
+			handle_stage_count(x, y, x)
 		end
 	end
 	redraw()
 end
 
-handle_pitch = function(x,y,z)
+handle_pitch = function(x, y, z)
 	if note[x] == y then note[x] = 0
 	else note[x] = y end
+end
+
+handle_stage_count = function(x, y, z)
+	-- button released; ignore.
+	if z==0 then return end
+	-- discard out-of-range button presses.
+	if y<=8 then return end
+	-- bottom row = 1, count up from there.
+	stage_count[x] = 17 - y
 end
 
 redraw = function()
 	grid_led_all(0)
 	-- draw clock position.
-	grid_led(step,1,5)
+	grid_led(step, 1, 5)
 	-- draw active page.
 	grid_led(page, 2, 5)
 	if page==1 then
 		redraw_pitch()
+	elseif page==2 then
+		redraw_stage_count()
 	end
 	grid_refresh()
 end
@@ -78,7 +94,16 @@ end
 redraw_pitch = function()
 	for n=1,16 do
 		if note[n] > 0 then
-			grid_led(n,note[n],step==n and 15 or 5)
+			grid_led(n, note[n], step==n and 15 or 5)
+		end
+	end
+end
+
+redraw_stage_count = function()
+	-- todo: consider tweaking this to show whole row
+	for n=1,16 do
+		if stage_count[n] > 0 then
+			grid_led(n, 17 - stage_count[n], step==n and 15 or 5)
 		end
 	end
 end
