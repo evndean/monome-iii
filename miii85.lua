@@ -10,7 +10,6 @@
 --   - rows 9-16: pitch, stage count, stage gate mode.
 -- 
 -- todo/idea:
---   - stage gate mode.
 --   - custom stage gate mode?
 --   - adjustable pattern length (start/end).
 --   - skip individual steps.
@@ -38,7 +37,7 @@ stage_gate_modes = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 ticks = 0
 
 tick = function()
-	-- todo: may not always turn off the last note
+	-- todo: don't turn off last note if in gate mode 8
 	if last > 0 then midi_note_off(map[last]) end
 	-- stay on current step for number of counts specified in stage_counts.
 	if step_count < stage_counts[step] then
@@ -47,7 +46,7 @@ tick = function()
 		step = (step % 16) + 1
 		step_count = 1
 	end
-	-- todo: might need to move things below this line elsewhere...
+
 	next_note = note[step]
 	step_gate_mode = stage_gate_modes[step]
 	if step_gate_mode==1 then
@@ -69,8 +68,8 @@ tick = function()
 		-- 8: long
 		-- todo: figure out how to implement this...
 	end
+
 	if next_note > 0 then midi_note_on(map[next_note]) end
-	-- ps("tick: step %d; step_count %d; step_gate_mode %s; last %d; next_note %d", step, step_count, step_gate_mode, last, next_note)
 	last = next_note
 	redraw()
 end
