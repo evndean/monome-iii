@@ -47,25 +47,26 @@ tick = function()
 		step_count = 1
 	end
 
+	-- use gate mode to determine whether next note should play.
 	next_note = note[step]
 	step_gate_mode = stage_gate_modes[step]
 	if step_gate_mode==1 then
-		-- 1: note off; nothing for duration of stage
+		-- mode 1: note off; play nothing for whole duration of stage.
 		next_note = 0
 	elseif step_gate_mode==2 then
-		-- 2: first clock pulse of stage only
+		-- mode 2: first clock pulse of stage only.
 		if step_count~=1 then next_note = 0 end
 	elseif step_gate_mode>=3 and step_gate_mode<=6 then
-		-- 3: note on every clock pulse
-		-- 4: note on every second clock pulse
-		-- 5: note on every third clock pulse
-		-- 6: note on every fourth clock pulse
+		-- mode 3: note on every clock pulse.
+		-- mode 4: note on every second clock pulse.
+		-- mode 5: note on every third clock pulse.
+		-- mode 6: note on every fourth clock pulse.
 		if (step_count-1) % (step_gate_mode-2) ~= 0 then next_note = 0 end
 	elseif step_gate_mode==7 then
-		-- 7: random
+		-- mode 7: random.
 		if math.random(2)~=1 then next_note = 0 end
 	else
-		-- 8: long
+		-- mode 8: long.
 		-- todo: figure out how to implement this...
 	end
 
