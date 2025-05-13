@@ -30,12 +30,15 @@ ch = 0
 page = 1
 step = 1
 step_count = 1
+step_gate_mode = 1
 last = 0
 note = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 stage_counts = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+stage_gate_modes = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 ticks = 0
 
 tick = function()
+	-- todo: may not always turn off the last note
 	if last > 0 then midi_note_off(map[last]) end
 	-- stay on current step for number of counts specified in stage_counts.
 	if step_count < stage_counts[step] then
@@ -45,8 +48,30 @@ tick = function()
 		step_count = 1
 	end
 	-- todo: might need to move things below this line elsewhere...
-	last = note[step]
-	if last > 0 then midi_note_on(map[last]) end
+	next_note = note[step]
+	step_gate_mode = stage_gate_modes[step]
+	if step_gate_mode==1 then
+		-- 1: note off; nothing for duration of stage
+		next_note = 0
+	elseif step_gate_mode==2 then
+		-- 2: first clock pulse of stage only
+		if step_count~=1 then next_note = 0 end
+	elseif step_gate_mode>=3 and step_gate_mode<=6 then
+		-- 3: note on every clock pulse
+		-- 4: note on every second clock pulse
+		-- 5: note on every third clock pulse
+		-- 6: note on every fourth clock pulse
+		if (step_count-1) % (step_gate_mode-2) ~= 0 then next_note = 0 end
+	elseif step_gate_mode==7 then
+		-- 7: random
+		if math.random(2)~=1 then next_note = 0 end
+	else
+		-- 8: long
+		-- todo: figure out how to implement this...
+	end
+	if next_note > 0 then midi_note_on(map[next_note]) end
+	-- ps("tick: step %d; step_count %d; step_gate_mode %s; last %d; next_note %d", step, step_count, step_gate_mode, last, next_note)
+	last = next_note
 	redraw()
 end
 
@@ -55,16 +80,19 @@ grid = function(x, y, z)
 	if z==0 then return end
 	if y==1 then
 		-- top row; ignore button presses.
+		return
 	elseif y==2 then
 		-- second row; switch pages if in range.
-		if x<=2 then
+		if x<=3 then
 			page=x
 		end
 	else
 		if page==1 then
-			handle_pitch(x, y, x)
+			handle_pitch(x, y, z)
 		elseif page==2 then
-			handle_stage_count(x, y, x)
+			handle_stage_count(x, y, z)
+		elseif page==3 then
+			handle_stage_gate_mode(x, y, z)
 		end
 	end
 	redraw()
@@ -84,6 +112,15 @@ handle_stage_count = function(x, y, z)
 	stage_counts[x] = 17 - y
 end
 
+handle_stage_gate_mode = function(x, y, z)
+	-- button released; ignore.
+	if z==0 then return end
+	-- discard out-of-range button presses.
+	if y<=8 then return end
+	-- bottom row = 1, count up from there.
+	stage_gate_modes[x] = 17 - y
+end
+
 redraw = function()
 	grid_led_all(0)
 	-- draw clock position.
@@ -94,6 +131,8 @@ redraw = function()
 		redraw_pitch()
 	elseif page==2 then
 		redraw_stage_count()
+	elseif page==3 then
+		redraw_stage_gate_mode()
 	end
 	grid_refresh()
 end
@@ -111,6 +150,15 @@ redraw_stage_count = function()
 	for n=1,16 do
 		if stage_counts[n] > 0 then
 			grid_led(n, 17 - stage_counts[n], step==n and 15 or 5)
+		end
+	end
+end
+
+redraw_stage_gate_mode = function()
+	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
+	for n=1,16 do
+		if stage_gate_modes[n] then
+			grid_led(n, 17 - stage_gate_modes[n], step==n and 15 or 5)
 		end
 	end
 end
