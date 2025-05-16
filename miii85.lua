@@ -31,16 +31,42 @@ step = 1
 step_count = 1
 step_gate_mode = 1
 last = 0
-note = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-stage_counts = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-stage_gate_modes = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 ticks = 0
+
+Page = {
+	-- hmmm, this seems to be shared across all pages.
+	-- todo: fix this
+	values = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+}
+
+function Page:grid(x, y, z)
+	-- button released; ignore.
+	if z==0 then return end
+	-- discard out-of-range button presses.
+	if y<=8 then return end
+	-- bottom row = 1, count up from there.
+	self.values[x] = 17 - y
+end
+
+function Page:redraw()
+	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
+	for n=1,16 do
+		if self.values[n] > 0 then
+			grid_led(n, 17 - self.values[n], step==n and 15 or 5)
+		end
+	end
+end
+
+page_note = Page
+page_stage_count = Page
+page_stage_gate_mode = Page
+pages = {page_note, page_stage_count, page_stage_gate_mode}
 
 tick = function()
 	-- todo: don't turn off last note if in gate mode 8
 	if last > 0 then midi_note_off(map[last]) end
 	-- stay on current step for number of counts specified in stage_counts.
-	if step_count < stage_counts[step] then
+	if step_count < page_stage_count.values[step] then
 		step_count = step_count + 1
 	else
 		step = (step % 16) + 1
@@ -48,8 +74,8 @@ tick = function()
 	end
 
 	-- use gate mode to determine whether next note should play.
-	next_note = note[step]
-	step_gate_mode = stage_gate_modes[step]
+	next_note = page_note.values[step]
+	step_gate_mode = page_stage_gate_mode.values[step]
 	if step_gate_mode==1 then
 		-- mode 1: note off; play nothing for whole duration of stage.
 		next_note = 0
@@ -83,42 +109,11 @@ grid = function(x, y, z)
 		return
 	elseif y==2 then
 		-- second row; switch pages if in range.
-		if x<=3 then
-			page=x
-		end
+		if pages[x] ~= nil then page  = x end
 	else
-		if page==1 then
-			handle_pitch(x, y, z)
-		elseif page==2 then
-			handle_stage_count(x, y, z)
-		elseif page==3 then
-			handle_stage_gate_mode(x, y, z)
-		end
+		if pages[page] ~= nil then pages[page]:grid(x, y, z) end
 	end
 	redraw()
-end
-
-handle_pitch = function(x, y, z)
-	if note[x] == y then note[x] = 0
-	else note[x] = y end
-end
-
-handle_stage_count = function(x, y, z)
-	-- button released; ignore.
-	if z==0 then return end
-	-- discard out-of-range button presses.
-	if y<=8 then return end
-	-- bottom row = 1, count up from there.
-	stage_counts[x] = 17 - y
-end
-
-handle_stage_gate_mode = function(x, y, z)
-	-- button released; ignore.
-	if z==0 then return end
-	-- discard out-of-range button presses.
-	if y<=8 then return end
-	-- bottom row = 1, count up from there.
-	stage_gate_modes[x] = 17 - y
 end
 
 redraw = function()
@@ -127,40 +122,9 @@ redraw = function()
 	grid_led(step, 1, 5)
 	-- draw active page.
 	grid_led(page, 2, 5)
-	if page==1 then
-		redraw_pitch()
-	elseif page==2 then
-		redraw_stage_count()
-	elseif page==3 then
-		redraw_stage_gate_mode()
-	end
+	-- trigger redraw logic for active page.
+	if pages[page] ~= nil then pages[page]:redraw() end
 	grid_refresh()
-end
-
-redraw_pitch = function()
-	for n=1,16 do
-		if note[n] > 0 then
-			grid_led(n, note[n], step==n and 15 or 5)
-		end
-	end
-end
-
-redraw_stage_count = function()
-	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
-	for n=1,16 do
-		if stage_counts[n] > 0 then
-			grid_led(n, 17 - stage_counts[n], step==n and 15 or 5)
-		end
-	end
-end
-
-redraw_stage_gate_mode = function()
-	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
-	for n=1,16 do
-		if stage_gate_modes[n] then
-			grid_led(n, 17 - stage_gate_modes[n], step==n and 15 or 5)
-		end
-	end
 end
 
 midi_rx = function(d1,d2,d3,d4)
