@@ -33,33 +33,40 @@ step_gate_mode = 1
 last = 0
 ticks = 0
 
-Page = {
-	-- hmmm, this seems to be shared across all pages.
-	-- todo: fix this
-	values = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-}
+function newPage()
+	-- doing this so each page will have independent values arrays.
+	local values = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 
-function Page:grid(x, y, z)
-	-- button released; ignore.
-	if z==0 then return end
-	-- discard out-of-range button presses.
-	if y<=8 then return end
-	-- bottom row = 1, count up from there.
-	self.values[x] = 17 - y
-end
+	local grid = function(x, y, z)
+		-- button released; ignore.
+		if z==0 then return end
+		-- discard out-of-range button presses.
+		if y<=8 then return end
+		-- bottom row = 1, count up from there.
+		values[x] = 17 - y
+	end
 
-function Page:redraw()
-	-- todo: consider tweaking this to show whole row; maybe count up based on step_count?
-	for n=1,16 do
-		if self.values[n] > 0 then
-			grid_led(n, 17 - self.values[n], step==n and 15 or 5)
+	local redraw = function()
+		-- todo: consider tweaking this to show whole row. may also want different
+		-- visualizations for different pages, e.g. pulse whole row for note,
+		-- count up for stage_count, something else for stage_gate_mode.
+		for n=1,16 do
+			if values[n] > 0 then
+				grid_led(n, 17 - values[n], step==n and 15 or 5)
+			end
 		end
 	end
+
+	return {
+		values = values,
+		grid = grid,
+		redraw = redraw
+	}
 end
 
-page_note = Page
-page_stage_count = Page
-page_stage_gate_mode = Page
+page_note = newPage()
+page_stage_count = newPage()
+page_stage_gate_mode = newPage()
 pages = {page_note, page_stage_count, page_stage_gate_mode}
 
 tick = function()
@@ -111,7 +118,7 @@ grid = function(x, y, z)
 		-- second row; switch pages if in range.
 		if pages[x] ~= nil then page  = x end
 	else
-		if pages[page] ~= nil then pages[page]:grid(x, y, z) end
+		if pages[page] ~= nil then pages[page].grid(x, y, z) end
 	end
 	redraw()
 end
@@ -123,7 +130,7 @@ redraw = function()
 	-- draw active page.
 	grid_led(page, 2, 5)
 	-- trigger redraw logic for active page.
-	if pages[page] ~= nil then pages[page]:redraw() end
+	if pages[page] ~= nil then pages[page].redraw() end
 	grid_refresh()
 end
 
