@@ -25,6 +25,9 @@ midi_clock_in = false
 -- change these for different notes:
 map = {66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96}
 
+SEQUENCE_LENGTH = 8
+MAX_Y_VALUE = 8
+
 ch = 0
 page = 1
 step = 1
@@ -35,25 +38,35 @@ ticks = 0
 
 function newPage()
 	-- doing this so each page will have independent values arrays.
-	local values = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+	local values = {}
+	for i = 1, SEQUENCE_LENGTH do
+		values[i] = 1
+	end
 
 	local grid = function(x, y, z)
 		-- button released; ignore.
-		if z==0 then return end
+		if z == 0 then return end
 		-- discard out-of-range button presses.
-		if y<=8 then return end
-		-- bottom row = 1, count up from there.
+		if y <= MAX_Y_VALUE then return end
+		-- bottom row = 1; count up from there.
 		values[x] = 17 - y
 	end
 
 	local redraw = function()
+		-- highlight available interactive area.
+		for x = 1, SEQUENCE_LENGTH do
+			for y = 17 - MAX_Y_VALUE, 16 do
+				grid_led(x, y, 2)
+			end
+		end
+
+		-- draw active values for each step.
 		-- todo: consider tweaking this to show whole row. may also want different
 		-- visualizations for different pages, e.g. pulse whole row for note,
 		-- count up for stage_count, something else for stage_gate_mode.
-		for n=1,16 do
-			if values[n] > 0 then
-				grid_led(n, 17 - values[n], step==n and 15 or 5)
-			end
+		for x = 1, SEQUENCE_LENGTH do
+			-- bottom row = 1; count up from there
+			grid_led(x, 17 - values[x], step==x and 15 or 5)
 		end
 	end
 
@@ -76,7 +89,7 @@ tick = function()
 	if step_count < page_stage_count.values[step] then
 		step_count = step_count + 1
 	else
-		step = (step % 16) + 1
+		step = (step % SEQUENCE_LENGTH) + 1
 		step_count = 1
 	end
 
@@ -105,6 +118,7 @@ tick = function()
 
 	if next_note > 0 then midi_note_on(map[next_note]) end
 	last = next_note
+
 	redraw()
 end
 
@@ -120,6 +134,7 @@ grid = function(x, y, z)
 	else
 		if pages[page] ~= nil then pages[page].grid(x, y, z) end
 	end
+
 	redraw()
 end
 
