@@ -3,8 +3,7 @@
 -- a step sequencer for the grid zero, inspired by the ryk modular m185 and the intellijel metropolix.
 -- 
 -- grid layout:
---   - row 1: playhead position.
---   - row 2: page selection (pitch, stage count, stage gate mode).
+--   - row 1: page selection (pitch, stage count, stage gate mode).
 --            maybe also pattern selection after implementing that?
 --   - rows 3-8: ?????
 --   - rows 9-16: pitch, stage count, stage gate mode.
@@ -126,10 +125,7 @@ grid = function(x, y, z)
 	-- button released; ignore.
 	if z==0 then return end
 	if y==1 then
-		-- top row; ignore button presses.
-		return
-	elseif y==2 then
-		-- second row; switch pages if in range.
+		-- top row; switch pages if in range.
 		if pages[x] ~= nil then page  = x end
 	else
 		if pages[page] ~= nil then pages[page].grid(x, y, z) end
@@ -140,10 +136,8 @@ end
 
 redraw = function()
 	grid_led_all(0)
-	-- draw clock position.
-	grid_led(step, 1, 5)
 	-- draw active page.
-	grid_led(page, 2, 5)
+	grid_led(page, 1, 5)
 	-- trigger redraw logic for active page.
 	if pages[page] ~= nil then pages[page].redraw() end
 	grid_refresh()
