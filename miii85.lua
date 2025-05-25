@@ -3,8 +3,9 @@
 -- a step sequencer for the grid zero, inspired by the ryk modular m185 and the intellijel metropolix.
 -- 
 -- grid layout:
---   - row 1: page selection (pitch, stage count, stage gate mode).
---            maybe also pattern selection after implementing that?
+--   - row 1: 1-3 page selection (pitch, stage count, stage gate mode).
+--            16 midi clock in on/off.
+--            (maybe also pattern selection after implementing that?)
 --   - row 2: midi channel selection.
 --   - rows 3-8: ?????
 --   - rows 9-16: pitch, stage count, stage gate mode.
@@ -130,6 +131,8 @@ grid = function(x, y, z)
 	if y==1 then
 		-- top row; switch pages if in range.
 		if pages[x] ~= nil then page  = x end
+		-- toggle midi clock in.
+		if x==16 then midi_clock_in = not midi_clock_in end
 	elseif y==2 then
 		-- second row; set midi channel
 		MIDI_CH = x
@@ -143,7 +146,11 @@ end
 redraw = function()
 	grid_led_all(0)
 	-- top row: draw active page.
-	grid_led(page, 1, 5)
+	for x = 1, #pages do
+		grid_led(x, 1, x == page and 10 or 2)
+	end
+	-- draw midi_clock_in state (on = bright; todo maybe reverse this)
+	grid_led(16, 1, midi_clock_in and 10 or 2)
 	-- second row: draw midi channel.
 	grid_led(MIDI_CH, 2, 5)
 	-- trigger redraw logic for active page.
@@ -163,9 +170,13 @@ end
 
 -- begin
 
+maybe_tick = function()
+	if not midi_clock_in then tick() end
+end
+
 if not midi_clock_in then
 	-- 150ms per step
-	metro.new(tick, 150)
+	metro.new(maybe_tick, 150)
 end
 
 redraw()
