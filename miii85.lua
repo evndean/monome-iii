@@ -5,6 +5,7 @@
 -- grid layout:
 --   - row 1: page selection (pitch, stage count, stage gate mode).
 --            maybe also pattern selection after implementing that?
+--   - row 2: midi channel selection.
 --   - rows 3-8: ?????
 --   - rows 9-16: pitch, stage count, stage gate mode.
 -- 
@@ -27,7 +28,8 @@ map = {66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96}
 SEQUENCE_LENGTH = 8
 MAX_Y_VALUE = 8
 
-ch = 0
+MIDI_CH = 1
+MIDI_VEL = 120
 page = 1
 step = 1
 step_count = 1
@@ -83,7 +85,8 @@ pages = {page_note, page_stage_count, page_stage_gate_mode}
 
 tick = function()
 	-- todo: don't turn off last note if in gate mode 8
-	if last > 0 then midi_note_off(map[last]) end
+	-- TODO: send note off to correct channel after changing channels
+	if last > 0 then midi_note_off(map[last], nil, MIDI_CH) end
 	-- stay on current step for number of counts specified in stage_counts.
 	if step_count < page_stage_count.values[step] then
 		step_count = step_count + 1
@@ -115,7 +118,7 @@ tick = function()
 		-- todo: figure out how to implement this...
 	end
 
-	if next_note > 0 then midi_note_on(map[next_note]) end
+	if next_note > 0 then midi_note_on(map[next_note], nil, MIDI_CH) end
 	last = next_note
 
 	redraw()
@@ -127,6 +130,9 @@ grid = function(x, y, z)
 	if y==1 then
 		-- top row; switch pages if in range.
 		if pages[x] ~= nil then page  = x end
+	elseif y==2 then
+		-- second row; set midi channel
+		MIDI_CH = x
 	else
 		if pages[page] ~= nil then pages[page].grid(x, y, z) end
 	end
@@ -136,8 +142,10 @@ end
 
 redraw = function()
 	grid_led_all(0)
-	-- draw active page.
+	-- top row: draw active page.
 	grid_led(page, 1, 5)
+	-- second row: draw midi channel.
+	grid_led(MIDI_CH, 2, 5)
 	-- trigger redraw logic for active page.
 	if pages[page] ~= nil then pages[page].redraw() end
 	grid_refresh()
