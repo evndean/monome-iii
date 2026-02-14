@@ -1,0 +1,3 @@
+-- arc rhythm generator
+-- inspired by the max patch by stretta
+-- https://youtu.be/HM0EBvJe1s0
