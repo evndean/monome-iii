@@ -24,12 +24,12 @@ TODO:
 -- TODO: come up with a data structure to weight each step (for density control).
 
 -- tracks the playhead position for each ring.
-position = {0,0,0,0}
+position = { 0, 0, 0, 0 }
 
 function redraw()
-    for n=1,4 do
+    for n = 1, 4 do
         -- zero out all led levels.
-        arc_led_all(n,0)
+        arc_led_all(n, 0)
 
         -- draw patterns.
         arc_led(n, position[n], 8)
@@ -46,7 +46,7 @@ function tick()
     -- for now, just have a single value, to figure out the advancing logic.
     -- TODO: implement patterns.
     -- TODO: make the speed variable per ring.
-    for n=1,4 do
+    for n = 1, 4 do
         position[n] = position[n] % 64 + 1
 
         -- TODO: check to see if we should emit a midi note.
