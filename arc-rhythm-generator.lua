@@ -16,7 +16,7 @@ local mode = 1
 local modetext = { "speed", "density", "pattern_gen" }
 
 -- tracks the playhead position for each ring.
-local positions = { 0, 0, 0, 0 }
+local positions = { 1, 1, 1, 1 }
 
 -- playhead spead for each ring.
 local speeds = { 1, 1, 1, 1 }
@@ -82,37 +82,38 @@ function redraw()
         arc_led_all(ring, 0)
 
         -- draw patterns.
-        local pattern = patterns[ring]
-        for step = 1, #pattern do
+        for step = 1, #patterns[ring] do
             local is_active = patterns[ring][step] <= densities[ring]
-            local led = wrap(step + positions[ring], 1, 64)
-            arc_led(ring, led, is_active == true and 8 or 0)
+            local led = wrap(step + positions[ring] - 1, 1, 64)
+            arc_led(ring, led, is_active == true and 4 or 0)
         end
 
         -- draw trigger markers.
-        arc_led(ring, 1, 15)
+        arc_led(ring, 1, 8)
     end
 
     arc_refresh()
 end
 
 function pattern_tick()
-    -- advance the trigger steps.
     for ring = 1, 4 do
-        local new_position = wrap(positions[ring] + speeds[ring], 1, #patterns[ring])
-        positions[ring] = new_position
-
-        -- check to see if we should emit a midi note.
-        local should_trigger = patterns[ring][new_position] <= densities[ring]
-        if should_trigger == true then
-            midi_should_emit[ring] = true
+        -- check if any of the notes we're about to pass through should trigger a note on event.
+        for i = 1, speeds[ring] do
+            if patterns[ring][wrap(positions[ring] + i, 1, #patterns[ring])] <= densities[ring] then
+                midi_should_emit[ring] = true
+            end
         end
+
+        -- advance the position.
+        positions[ring] = wrap(positions[ring] + speeds[ring], 1, #patterns[ring])
     end
 
     redraw()
 end
 
 function tempo_tick()
+    print("tempo tick")
+
     -- turn off notes from previous tick.
     for ring = 1, 4 do
         if midi_sent_on_last_tick[ring] == true then
@@ -143,7 +144,7 @@ function init()
     local pt = metro.new(pattern_tick, 33)
 
     -- TODO: implement external midi clock; if enabled, disable this.
-    local tt = metro.new(tempo_tick, math.floor(60000 / TEMPO_BPM))
+    local tt = metro.new(tempo_tick, math.floor(60000 / (TEMPO_BPM * 4)))
 end
 
 init()
