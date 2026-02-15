@@ -29,6 +29,7 @@ speed = { 1, 1, 1, 1 }
 
 -- density control for each ring.
 density = { 1, 1, 1, 1 }
+MAX_DENSITY = 512
 
 -- patterns for each ring.
 patterns = { {}, {}, {}, {} }
@@ -41,7 +42,7 @@ function arc(ring, delta)
         speed[ring] = clamp(speed[ring] + delta, -64, 64)
         ps("speed %d: %d", ring, speed[ring])
     elseif mode == 2 then
-        density[ring] = clamp(density[ring] + delta, 0, 10)
+        density[ring] = clamp(density[ring] + delta, 0, MAX_DENSITY)
         ps("density %d: %d", ring, density[ring])
     end
 end
@@ -60,6 +61,7 @@ function pattern_gen(len, max_density)
     -- have the first note always trigger.
     p[1] = 1
     -- randomly assign density for remaining notes.
+    -- TODO: come up with a more musical approach?
     for i = 2, len do
         p[i] = math.floor(math.random(2, max_density))
     end
@@ -103,7 +105,7 @@ function init()
 
     -- initialize patterns. there are 64 leds in each ring, so each pattern is 64 steps long.
     for n = 1, 4 do
-        patterns[n] = pattern_gen(64, 10)
+        patterns[n] = pattern_gen(64, MAX_DENSITY)
     end
 
     m = metro.new(tick, 33)
