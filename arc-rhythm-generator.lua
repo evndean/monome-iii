@@ -5,11 +5,12 @@ inspired by the max patch by stretta
 https://youtu.be/HM0EBvJe1s0
 
 TODO:
-- set up midi trigger generation
-- add external midi clock
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
 ]]
+
+-- TODO: make this configurable from the arc.
+local TEMPO_BPM = 120
 
 local modetext = { "speed", "density", "pattern_gen" }
 local mode = 1
@@ -23,6 +24,14 @@ local speed = { 1, 1, 1, 1 }
 -- density control for each ring.
 local density = { 1, 1, 1, 1 }
 local MAX_DENSITY = 512
+
+-- used to tell when a given ring should emit a midi note on the next beat.
+local midi_should_emit = { false, false, false, false }
+local midi_sent_on_last_tick = { false, false, false, false }
+-- TODO: make this configurable from the arc.
+local midi_channels = { 1, 1, 1, 1 }
+-- TODO: make this configurable from the arc.
+local midi_notes = { 53, 58, 61, 63 }
 
 -- patterns for each ring.
 local patterns = { {}, {}, {}, {} }
@@ -46,8 +55,8 @@ end
 
 function arc_key(z)
     if z == 1 then
-        mode = mode % #modetext + 1
-        ps("mode: %i %s", mode, modetext[mode])
+        mode = wrap(mode + 1, 1, #modetext)
+        ps("mode: %i: %s", mode, modetext[mode])
     end
 end
 
@@ -75,7 +84,7 @@ function redraw()
         local pattern = patterns[ring]
         for step = 1, #pattern do
             local is_active = patterns[ring][step] <= density[ring]
-            local led = (step + position[ring] - 1) % 64 + 1
+            local led = wrap(step + position[ring], 1, 64)
             arc_led(ring, led, is_active == true and 8 or 0)
         end
 
@@ -86,26 +95,54 @@ function redraw()
     arc_refresh()
 end
 
-function tick()
+function pattern_tick()
     -- advance the trigger steps.
-    for n = 1, 4 do
-        position[n] = (position[n] + speed[n]) % 64
+    for ring = 1, 4 do
+        local new_position = wrap(position[ring] + speed[ring], 1, #patterns[ring])
+        position[ring] = new_position
 
-        -- TODO: check to see if we should emit a midi note.
+        -- check to see if we should emit a midi note.
+        local should_trigger = patterns[ring][new_position] <= density[ring]
+        if should_trigger == true then
+            midi_should_emit[ring] = true
+        end
     end
 
     redraw()
 end
 
+function tempo_tick()
+    -- turn off notes from previous tick.
+    for ring = 1, 4 do
+        if midi_sent_on_last_tick[ring] == true then
+            midi_note_off(midi_notes[ring], 127, midi_channels[ring])
+            midi_sent_on_last_tick[ring] = false
+        end
+    end
+
+    -- send new midi notes.
+    for ring = 1, 4 do
+        if midi_should_emit[ring] == true then
+            ps("emitting note for ring %d", ring)
+            midi_note_on(midi_notes[ring], 127, midi_channels[ring])
+            midi_sent_on_last_tick[ring] = true
+            midi_should_emit[ring] = false
+        end
+    end
+end
+
 function init()
     print("\n arc rhythm generator")
 
-    -- initialize patterns. there are 64 leds in each ring, so each pattern is 64 steps long.
+    -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
     for n = 1, 4 do
         patterns[n] = pattern_gen(64, MAX_DENSITY)
     end
 
-    m = metro.new(tick, 33)
+    local pt = metro.new(pattern_tick, 33)
+
+    -- TODO: implement external midi clock; if enabled, disable this.
+    local tt = metro.new(tempo_tick, math.floor(60000 / TEMPO_BPM))
 end
 
 init()
