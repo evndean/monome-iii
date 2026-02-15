@@ -20,6 +20,7 @@ local position = { 0, 0, 0, 0 }
 
 -- playhead spead for each ring.
 local speed = { 1, 1, 1, 1 }
+local MAX_SPEED = 64
 
 -- density control for each ring.
 local density = { 1, 1, 1, 1 }
@@ -41,7 +42,7 @@ function arc(ring, delta)
         -- TODO: figure out how to make these swings smaller.
         -- i tried dividing delta, but i think passing a float for speed caused issues.
         -- and using math.floor here also seemed to cause issues. maybe i need to floor elsewhere...
-        speed[ring] = clamp(speed[ring] + delta, -64, 64)
+        speed[ring] = clamp(speed[ring] + delta, -MAX_SPEED, MAX_SPEED)
         ps("speed %d: %d", ring, speed[ring])
     elseif mode == 2 then
         density[ring] = clamp(density[ring] + delta, 0, MAX_DENSITY)
