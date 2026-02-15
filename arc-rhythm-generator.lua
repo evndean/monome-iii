@@ -20,7 +20,7 @@ local positions = { 1, 1, 1, 1 }
 
 -- playhead spead for each ring.
 local speeds = { 1, 1, 1, 1 }
-local MAX_SPEED = 64
+local MAX_SPEED = 16
 
 -- density control for each ring.
 local densities = { 1, 1, 1, 1 }
