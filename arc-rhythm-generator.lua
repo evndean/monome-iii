@@ -144,7 +144,8 @@ function init()
     local pt = metro.new(pattern_tick, 33)
 
     -- TODO: implement external midi clock; if enabled, disable this.
-    local tt = metro.new(tempo_tick, math.floor(60000 / (TEMPO_BPM * 4)))
+    local sixteenth_note_ms = math.floor(60000 / (TEMPO_BPM * 4))
+    local tt = metro.new(tempo_tick, sixteenth_note_ms)
 end
 
 init()
