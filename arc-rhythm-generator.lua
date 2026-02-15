@@ -12,18 +12,18 @@ TODO:
 -- TODO: make this configurable from the arc.
 local TEMPO_BPM = 120
 
-local modetext = { "speed", "density", "pattern_gen" }
 local mode = 1
+local modetext = { "speed", "density", "pattern_gen" }
 
 -- tracks the playhead position for each ring.
-local position = { 0, 0, 0, 0 }
+local positions = { 0, 0, 0, 0 }
 
 -- playhead spead for each ring.
-local speed = { 1, 1, 1, 1 }
+local speeds = { 1, 1, 1, 1 }
 local MAX_SPEED = 64
 
 -- density control for each ring.
-local density = { 1, 1, 1, 1 }
+local densities = { 1, 1, 1, 1 }
 local MAX_DENSITY = 512
 
 -- used to tell when a given ring should emit a midi note on the next beat.
@@ -42,11 +42,11 @@ function arc(ring, delta)
         -- TODO: figure out how to make these swings smaller.
         -- i tried dividing delta, but i think passing a float for speed caused issues.
         -- and using math.floor here also seemed to cause issues. maybe i need to floor elsewhere...
-        speed[ring] = clamp(speed[ring] + delta, -MAX_SPEED, MAX_SPEED)
-        ps("speed %d: %d", ring, speed[ring])
+        speeds[ring] = clamp(speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
+        ps("speed %d: %d", ring, speeds[ring])
     elseif mode == 2 then
-        density[ring] = clamp(density[ring] + delta, 0, MAX_DENSITY)
-        ps("density %d: %d", ring, density[ring])
+        densities[ring] = clamp(densities[ring] + delta, 0, MAX_DENSITY)
+        ps("density %d: %d", ring, densities[ring])
     elseif mode == 3 then
         -- TODO: debouce this, so we generate patterns less frequently (controls are very sensitive).
         patterns[ring] = pattern_gen(64, MAX_DENSITY)
@@ -84,8 +84,8 @@ function redraw()
         -- draw patterns.
         local pattern = patterns[ring]
         for step = 1, #pattern do
-            local is_active = patterns[ring][step] <= density[ring]
-            local led = wrap(step + position[ring], 1, 64)
+            local is_active = patterns[ring][step] <= densities[ring]
+            local led = wrap(step + positions[ring], 1, 64)
             arc_led(ring, led, is_active == true and 8 or 0)
         end
 
@@ -99,11 +99,11 @@ end
 function pattern_tick()
     -- advance the trigger steps.
     for ring = 1, 4 do
-        local new_position = wrap(position[ring] + speed[ring], 1, #patterns[ring])
-        position[ring] = new_position
+        local new_position = wrap(positions[ring] + speeds[ring], 1, #patterns[ring])
+        positions[ring] = new_position
 
         -- check to see if we should emit a midi note.
-        local should_trigger = patterns[ring][new_position] <= density[ring]
+        local should_trigger = patterns[ring][new_position] <= densities[ring]
         if should_trigger == true then
             midi_should_emit[ring] = true
         end
