@@ -18,21 +18,21 @@ TODO:
 - add ability to reset after n clock ticks
 ]]
 
-modetext = { "speed", "density" }
-mode = 1
+local modetext = { "speed", "density" }
+local mode = 1
 
 -- tracks the playhead position for each ring.
-position = { 0, 0, 0, 0 }
+local position = { 0, 0, 0, 0 }
 
 -- playhead spead for each ring.
-speed = { 1, 1, 1, 1 }
+local speed = { 1, 1, 1, 1 }
 
 -- density control for each ring.
-density = { 1, 1, 1, 1 }
-MAX_DENSITY = 512
+local density = { 1, 1, 1, 1 }
+local MAX_DENSITY = 512
 
 -- patterns for each ring.
-patterns = { {}, {}, {}, {} }
+local patterns = { {}, {}, {}, {} }
 
 function arc(ring, delta)
     -- TODO: figure out how to make these swings smaller.
