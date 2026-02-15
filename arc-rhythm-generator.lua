@@ -4,21 +4,14 @@ arc rhythm generator
 inspired by the max patch by stretta
 https://youtu.be/HM0EBvJe1s0
 
-
-pages (IDEA):
-- control density
-- control speed
-- generate new patterns
-
 TODO:
 - set up midi trigger generation
 - add external midi clock
-- add ability to generate new patterns
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
 ]]
 
-local modetext = { "speed", "density" }
+local modetext = { "speed", "density", "pattern_gen" }
 local mode = 1
 
 -- tracks the playhead position for each ring.
@@ -44,6 +37,10 @@ function arc(ring, delta)
     elseif mode == 2 then
         density[ring] = clamp(density[ring] + delta, 0, MAX_DENSITY)
         ps("density %d: %d", ring, density[ring])
+    elseif mode == 3 then
+        -- TODO: debouce this, so we generate patterns less frequently (controls are very sensitive).
+        patterns[ring] = pattern_gen(64, MAX_DENSITY)
+        ps("generated new pattern for ring %d", ring)
     end
 end
 
