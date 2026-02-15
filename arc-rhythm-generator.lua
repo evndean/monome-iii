@@ -35,10 +35,10 @@ local MAX_DENSITY = 512
 local patterns = { {}, {}, {}, {} }
 
 function arc(ring, delta)
-    -- TODO: figure out how to make these swings smaller.
-    -- i tried dividing delta, but i think passing a float for speed caused issues.
-    -- and using math.floor here also seemed to cause issues. maybe i need to floor elsewhere...
     if mode == 1 then
+        -- TODO: figure out how to make these swings smaller.
+        -- i tried dividing delta, but i think passing a float for speed caused issues.
+        -- and using math.floor here also seemed to cause issues. maybe i need to floor elsewhere...
         speed[ring] = clamp(speed[ring] + delta, -64, 64)
         ps("speed %d: %d", ring, speed[ring])
     elseif mode == 2 then
