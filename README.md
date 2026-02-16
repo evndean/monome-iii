@@ -23,3 +23,11 @@ But, if you don't already have diii installed, you can use this to get up and ru
     pip install -r requirements.txt
     ```
 
+## Scripts
+
+Various iii scripts.
+
+## Types
+
+I've written type definitions for current iii commands.
+If you're using the Lua Language Server, this should prevent your IDE from flagging iii functions as undefined.
