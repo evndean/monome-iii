@@ -14,8 +14,8 @@ TODO:
 local TEMPO_BPM = 120
 
 local mode = 1
-local mode_name = { "speed", "density", "pattern_gen" }
-local mode_responsiveness = { 20, 5, 25 }
+local mode_name = { "speed", "density", "pattern_gen", "midi_notes" }
+local mode_responsiveness = { 20, 5, 25, 20 }
 
 local ring_positions = { 1, 1, 1, 1 }
 local ring_speeds = { 1, 1, 1, 1 } -- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
@@ -25,8 +25,8 @@ local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
 local ring_midi_should_emit = { false, false, false, false }
 local ring_midi_sent_on_last_tick = { false, false, false, false }
-local ring_midi_channels = { 1, 1, 1, 1 }  -- TODO: make this configurable from the arc.
-local ring_midi_notes = { 53, 58, 61, 63 } -- TODO: make this configurable from the arc.
+local ring_midi_channels = { 1, 1, 1, 1 } -- TODO: make this configurable from the arc.
+local ring_midi_notes = { 53, 58, 61, 63 }
 
 
 function arc(ring, delta)
@@ -39,6 +39,9 @@ function arc(ring, delta)
     elseif mode == 3 then
         ring_patterns[ring] = pattern_gen(64, MAX_DENSITY)
         ps("generated new pattern for ring %d", ring)
+    elseif mode == 4 then
+        ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
+        ps("set midi note for ring %d: %d", ring, ring_midi_notes[ring])
     end
 end
 
@@ -68,6 +71,42 @@ function pattern_gen(len, max_density)
     return p
 end
 
+--- Renders a 12-step piano-style display, with the active note highlighted.
+---@param ring integer 1-4
+---@param active integer 0-127
+function draw_piano(ring, active)
+    -- TODO different levels depending on octave?
+    -- TODO maybe offset so C isn't at the top?
+    -- TODO figure out what to do with the extra space...
+
+    -- 64 LEDs / 12 steps = 5.3333
+    -- 5 * 12 = 60 (so we have 4 spare LEDs to play with...)
+
+    -- 0 = C1, 127 = G9
+    -- C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+    local is_white_key = { 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1 }
+    local key_width = 5
+
+    -- set background level
+    arc_led_all(ring, 0)
+
+    -- draw keys
+    for i = 1, 12 do
+        for j = 1, key_width do
+            local led = (i - 1) * key_width + j
+            local level = is_white_key[i] == 1 and 2 or 0
+            arc_led(ring, led, level)
+        end
+    end
+
+    -- highlight active note
+    local active_note = wrap((active + 1), 1, 12) -- C=1, C#=2, D=3, etc...
+    for i = 1, key_width do
+        local led = (active_note - 1) * key_width + i
+        arc_led(ring, led, 15)
+    end
+end
+
 function draw_pattern_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
         -- set background level
@@ -94,6 +133,10 @@ function redraw()
         draw_pattern_mode(0, 2, 8)
     elseif mode == 3 then
         draw_pattern_mode(2, 0, 8)
+    elseif mode == 4 then
+        for ring = 1, 4 do
+            draw_piano(ring, ring_midi_notes[ring])
+        end
     end
 
     arc_refresh()
