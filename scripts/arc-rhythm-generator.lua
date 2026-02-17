@@ -13,9 +13,13 @@ TODO:
 -- TODO: implement external midi clock (will need to disable internal midi clock)
 local TEMPO_BPM = 120
 
+-- #### mode-specific variables ####
+
 local mode = 1
 local mode_name = { "speed", "density", "pattern_gen", "midi_notes" }
 local mode_responsiveness = { 20, 5, 25, 20 }
+
+-- #### ring-specific variables ####
 
 local ring_positions = { 1, 1, 1, 1 }
 local ring_speeds = { 1, 1, 1, 1 } -- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
@@ -28,6 +32,7 @@ local ring_midi_sent_on_last_tick = { false, false, false, false }
 local ring_midi_channels = { 1, 1, 1, 1 } -- TODO: make this configurable from the arc.
 local ring_midi_notes = { 53, 58, 61, 63 }
 
+-- ####
 
 function arc(ring, delta)
     if mode == 1 then
