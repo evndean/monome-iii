@@ -21,6 +21,7 @@ local mode_responsiveness = { 20, 5, 25 }
 local positions = { 1, 1, 1, 1 }
 
 -- playhead spead for each ring.
+-- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
 local speeds = { 1, 1, 1, 1 }
 local MAX_SPEED = 16
 
