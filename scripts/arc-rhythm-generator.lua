@@ -16,7 +16,7 @@ local TEMPO_BPM = 120
 -- #### mode-specific variables ####
 
 local mode = 1
-local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" } -- TODO split modes into two pages: "perform" and "config" (and maybe long-press for pattern gen...)
+local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" } -- TODO split modes into two pages: "perform" and "config"
 local mode_responsiveness = { 20, 5, 25, 20, 20 }
 
 -- #### ring-specific variables ####
@@ -170,7 +170,7 @@ function redraw()
     elseif mode == 2 then
         draw_patterns_mode(0, 2, 8)
     elseif mode == 3 then
-        draw_patterns_mode(2, 0, 8)
+        draw_patterns_mode(1, 1, 8)
     elseif mode == 4 then
         draw_midi_notes_mode()
     elseif mode == 5 then
