@@ -107,13 +107,13 @@ function draw_piano(ring, active)
     end
 end
 
-function draw_midi_channel_mode()
+function draw_midi_notes_mode()
     for ring = 1, 4 do
         draw_piano(ring, ring_midi_notes[ring])
     end
 end
 
-function draw_pattern_mode(background_level, trigger_level, pattern_level)
+function draw_patterns_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
         -- set background level
         arc_led_all(ring, background_level)
@@ -134,13 +134,13 @@ end
 
 function redraw()
     if mode == 1 then
-        draw_pattern_mode(0, 8, 4)
+        draw_patterns_mode(0, 8, 4)
     elseif mode == 2 then
-        draw_pattern_mode(0, 2, 8)
+        draw_patterns_mode(0, 2, 8)
     elseif mode == 3 then
-        draw_pattern_mode(2, 0, 8)
+        draw_patterns_mode(2, 0, 8)
     elseif mode == 4 then
-        draw_midi_channel_mode()
+        draw_midi_notes_mode()
     end
 
     arc_refresh()
