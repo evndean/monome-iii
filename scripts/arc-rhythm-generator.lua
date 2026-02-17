@@ -16,7 +16,7 @@ local TEMPO_BPM = 120
 -- #### mode-specific variables ####
 
 local mode = 1
-local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" }
+local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" } -- TODO split modes into two pages: "perform" and "config" (and maybe long-press for pattern gen...)
 local mode_responsiveness = { 20, 5, 25, 20, 20 }
 
 -- #### ring-specific variables ####
@@ -141,6 +141,10 @@ function draw_midi_channels_mode()
     end
 end
 
+--- Draws a pattern, with an indicator for a trigger point, and all steps in the pattern.
+---@param background_level integer 0-15
+---@param trigger_level integer 0-15
+---@param pattern_level integer 0-15
 function draw_patterns_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
         -- set background level
@@ -162,7 +166,7 @@ end
 
 function redraw()
     if mode == 1 then
-        draw_patterns_mode(0, 8, 4)
+        draw_patterns_mode(0, 12, 4)
     elseif mode == 2 then
         draw_patterns_mode(0, 2, 8)
     elseif mode == 3 then
