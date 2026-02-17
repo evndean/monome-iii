@@ -13,7 +13,8 @@ TODO:
 local TEMPO_BPM = 120
 
 local mode = 1
-local modetext = { "speed", "density", "pattern_gen" }
+local mode_name = { "speed", "density", "pattern_gen" }
+local mode_responsiveness = { 20, 5, 25 }
 
 -- tracks the playhead position for each ring.
 local positions = { 1, 1, 1, 1 }
@@ -39,16 +40,12 @@ local patterns = { {}, {}, {}, {} }
 
 function arc(ring, delta)
     if mode == 1 then
-        -- TODO: figure out how to make these swings smaller.
-        -- i tried dividing delta, but i think passing a float for speed caused issues.
-        -- and using math.floor here also seemed to cause issues. maybe i need to floor elsewhere...
         speeds[ring] = clamp(speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
         ps("speed %d: %d", ring, speeds[ring])
     elseif mode == 2 then
         densities[ring] = clamp(densities[ring] + delta, 0, MAX_DENSITY)
         ps("density %d: %d", ring, densities[ring])
     elseif mode == 3 then
-        -- TODO: debouce this, so we generate patterns less frequently (controls are very sensitive).
         patterns[ring] = pattern_gen(64, MAX_DENSITY)
         ps("generated new pattern for ring %d", ring)
     end
@@ -56,8 +53,13 @@ end
 
 function arc_key(z)
     if z == 1 then
-        mode = wrap(mode + 1, 1, #modetext)
-        ps("mode: %i: %s", mode, modetext[mode])
+        mode = wrap(mode + 1, 1, #mode_name)
+        ps("mode: %i: %s", mode, mode_name[mode])
+
+        -- set sensitivity based on mode
+        for ring = 1, 4 do
+            arc_res(ring, mode_responsiveness[mode])
+        end
     end
 end
 
@@ -139,6 +141,11 @@ function init()
     -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
     for n = 1, 4 do
         patterns[n] = pattern_gen(64, MAX_DENSITY)
+    end
+
+    -- set sensitivity based on mode
+    for ring = 1, 4 do
+        arc_res(ring, mode_responsiveness[mode])
     end
 
     local pt = metro.new(pattern_tick, 33)
