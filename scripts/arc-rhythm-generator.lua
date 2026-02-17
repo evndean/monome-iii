@@ -68,21 +68,32 @@ function pattern_gen(len, max_density)
     return p
 end
 
-function redraw()
-    -- TODO: different UX for different modes
+function draw_pattern_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
-        -- zero out all led levels.
-        arc_led_all(ring, 0)
+        -- set background level
+        arc_led_all(ring, background_level)
 
         -- draw patterns.
         for step = 1, #ring_patterns[ring] do
             local is_active = ring_patterns[ring][step] <= ring_densities[ring]
-            local led = wrap(step + ring_positions[ring] - 1, 1, 64)
-            arc_led(ring, led, is_active == true and 4 or 0)
+            if is_active then
+                local led = wrap(step + ring_positions[ring] - 1, 1, 64)
+                arc_led(ring, led, pattern_level)
+            end
         end
 
         -- draw trigger markers.
-        arc_led(ring, 1, 8)
+        arc_led(ring, 1, trigger_level)
+    end
+end
+
+function redraw()
+    if mode == 1 then
+        draw_pattern_mode(0, 8, 4)
+    elseif mode == 2 then
+        draw_pattern_mode(0, 2, 8)
+    elseif mode == 3 then
+        draw_pattern_mode(2, 0, 8)
     end
 
     arc_refresh()
