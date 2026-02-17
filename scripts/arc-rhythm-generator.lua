@@ -17,38 +17,27 @@ local mode = 1
 local mode_name = { "speed", "density", "pattern_gen" }
 local mode_responsiveness = { 20, 5, 25 }
 
--- tracks the playhead position for each ring.
-local positions = { 1, 1, 1, 1 }
-
--- playhead spead for each ring.
--- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
-local speeds = { 1, 1, 1, 1 }
+local ring_positions = { 1, 1, 1, 1 }
+local ring_speeds = { 1, 1, 1, 1 } -- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
 local MAX_SPEED = 16
-
--- density control for each ring.
-local densities = { 1, 1, 1, 1 }
+local ring_densities = { 1, 1, 1, 1 }
 local MAX_DENSITY = 512
+local ring_patterns = { {}, {}, {}, {} }
+local ring_midi_should_emit = { false, false, false, false }
+local ring_midi_sent_on_last_tick = { false, false, false, false }
+local ring_midi_channels = { 1, 1, 1, 1 }  -- TODO: make this configurable from the arc.
+local ring_midi_notes = { 53, 58, 61, 63 } -- TODO: make this configurable from the arc.
 
--- used to tell when a given ring should emit a midi note on the next beat.
-local midi_should_emit = { false, false, false, false }
-local midi_sent_on_last_tick = { false, false, false, false }
--- TODO: make this configurable from the arc.
-local midi_channels = { 1, 1, 1, 1 }
--- TODO: make this configurable from the arc.
-local midi_notes = { 53, 58, 61, 63 }
-
--- patterns for each ring.
-local patterns = { {}, {}, {}, {} }
 
 function arc(ring, delta)
     if mode == 1 then
-        speeds[ring] = clamp(speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
-        ps("speed %d: %d", ring, speeds[ring])
+        ring_speeds[ring] = clamp(ring_speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
+        ps("speed %d: %d", ring, ring_speeds[ring])
     elseif mode == 2 then
-        densities[ring] = clamp(densities[ring] + delta, 0, MAX_DENSITY)
-        ps("density %d: %d", ring, densities[ring])
+        ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
+        ps("density %d: %d", ring, ring_densities[ring])
     elseif mode == 3 then
-        patterns[ring] = pattern_gen(64, MAX_DENSITY)
+        ring_patterns[ring] = pattern_gen(64, MAX_DENSITY)
         ps("generated new pattern for ring %d", ring)
     end
 end
@@ -86,9 +75,9 @@ function redraw()
         arc_led_all(ring, 0)
 
         -- draw patterns.
-        for step = 1, #patterns[ring] do
-            local is_active = patterns[ring][step] <= densities[ring]
-            local led = wrap(step + positions[ring] - 1, 1, 64)
+        for step = 1, #ring_patterns[ring] do
+            local is_active = ring_patterns[ring][step] <= ring_densities[ring]
+            local led = wrap(step + ring_positions[ring] - 1, 1, 64)
             arc_led(ring, led, is_active == true and 4 or 0)
         end
 
@@ -102,14 +91,14 @@ end
 function pattern_tick()
     for ring = 1, 4 do
         -- check if any of the notes we're about to pass through should trigger a note on event.
-        for i = 1, speeds[ring] do
-            if patterns[ring][wrap(positions[ring] + i, 1, #patterns[ring])] <= densities[ring] then
-                midi_should_emit[ring] = true
+        for i = 1, ring_speeds[ring] do
+            if ring_patterns[ring][wrap(ring_positions[ring] + i, 1, #ring_patterns[ring])] <= ring_densities[ring] then
+                ring_midi_should_emit[ring] = true
             end
         end
 
         -- advance the position.
-        positions[ring] = wrap(positions[ring] + speeds[ring], 1, #patterns[ring])
+        ring_positions[ring] = wrap(ring_positions[ring] + ring_speeds[ring], 1, #ring_patterns[ring])
     end
 
     redraw()
@@ -120,19 +109,19 @@ function tempo_tick()
 
     -- turn off notes from previous tick.
     for ring = 1, 4 do
-        if midi_sent_on_last_tick[ring] == true then
-            midi_note_off(midi_notes[ring], 127, midi_channels[ring])
-            midi_sent_on_last_tick[ring] = false
+        if ring_midi_sent_on_last_tick[ring] == true then
+            midi_note_off(ring_midi_notes[ring], 127, ring_midi_channels[ring])
+            ring_midi_sent_on_last_tick[ring] = false
         end
     end
 
     -- send new midi notes.
     for ring = 1, 4 do
-        if midi_should_emit[ring] == true then
+        if ring_midi_should_emit[ring] == true then
             ps("emitting note for ring %d", ring)
-            midi_note_on(midi_notes[ring], 127, midi_channels[ring])
-            midi_sent_on_last_tick[ring] = true
-            midi_should_emit[ring] = false
+            midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
+            ring_midi_sent_on_last_tick[ring] = true
+            ring_midi_should_emit[ring] = false
         end
     end
 end
@@ -142,7 +131,7 @@ function init()
 
     -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
     for n = 1, 4 do
-        patterns[n] = pattern_gen(64, MAX_DENSITY)
+        ring_patterns[n] = pattern_gen(64, MAX_DENSITY)
     end
 
     -- set sensitivity based on mode
