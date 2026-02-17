@@ -10,6 +10,7 @@ TODO:
 ]]
 
 -- TODO: make this configurable from the arc.
+-- TODO: implement external midi clock (will need to disable internal midi clock)
 local TEMPO_BPM = 120
 
 local mode = 1
@@ -150,7 +151,6 @@ function init()
 
     local pt = metro.new(pattern_tick, 33)
 
-    -- TODO: implement external midi clock; if enabled, disable this.
     local sixteenth_note_ms = math.floor(60000 / (TEMPO_BPM * 4))
     local tt = metro.new(tempo_tick, sixteenth_note_ms)
 end
