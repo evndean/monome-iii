@@ -16,8 +16,8 @@ local TEMPO_BPM = 120
 -- #### mode-specific variables ####
 
 local mode = 1
-local mode_name = { "speed", "density", "pattern_gen", "midi_notes" }
-local mode_responsiveness = { 20, 5, 25, 20 }
+local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" }
+local mode_responsiveness = { 20, 5, 25, 20, 20 }
 
 -- #### ring-specific variables ####
 
@@ -29,7 +29,7 @@ local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
 local ring_midi_should_emit = { false, false, false, false }
 local ring_midi_sent_on_last_tick = { false, false, false, false }
-local ring_midi_channels = { 1, 1, 1, 1 } -- TODO: make this configurable from the arc.
+local ring_midi_channels = { 1, 1, 1, 1 }
 local ring_midi_notes = { 53, 58, 61, 63 }
 
 -- ####
@@ -37,16 +37,19 @@ local ring_midi_notes = { 53, 58, 61, 63 }
 function arc(ring, delta)
     if mode == 1 then
         ring_speeds[ring] = clamp(ring_speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
-        ps("speed %d: %d", ring, ring_speeds[ring])
+        ps("set speed for ring: %d: %d", ring, ring_speeds[ring])
     elseif mode == 2 then
         ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
-        ps("density %d: %d", ring, ring_densities[ring])
+        ps("set density for ring: %d: %d", ring, ring_densities[ring])
     elseif mode == 3 then
         ring_patterns[ring] = pattern_gen(64, MAX_DENSITY)
-        ps("generated new pattern for ring %d", ring)
+        ps("generated new pattern for ring: %d", ring)
     elseif mode == 4 then
         ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
-        ps("set midi note for ring %d: %d", ring, ring_midi_notes[ring])
+        ps("set midi note for ring: %d: %d", ring, ring_midi_notes[ring])
+    elseif mode == 5 then
+        ring_midi_channels[ring] = clamp(ring_midi_channels[ring] + delta, 1, 16)
+        ps("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
     end
 end
 
@@ -118,6 +121,26 @@ function draw_midi_notes_mode()
     end
 end
 
+function draw_midi_channels_mode()
+    for ring = 1, 4 do
+        -- valid values for channel are 1-16
+        -- 64 / 16 = 4
+        local step_width = 4
+
+        -- set background level
+        arc_led_all(ring, 0)
+
+        -- show active channel
+        local active_channel = ring_midi_channels[ring]
+        for i = 1, active_channel do
+            for j = 1, step_width do
+                local led = (i - 1) * step_width + j
+                arc_led(ring, led, 4)
+            end
+        end
+    end
+end
+
 function draw_patterns_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
         -- set background level
@@ -146,6 +169,8 @@ function redraw()
         draw_patterns_mode(2, 0, 8)
     elseif mode == 4 then
         draw_midi_notes_mode()
+    elseif mode == 5 then
+        draw_midi_channels_mode()
     end
 
     arc_refresh()
