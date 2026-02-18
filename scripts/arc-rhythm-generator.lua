@@ -17,7 +17,7 @@ local TEMPO_BPM = 120
 
 local mode = 1
 local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" } -- TODO split modes into two pages: "perform" and "config"
-local mode_responsiveness = { 20, 5, 25, 20, 20 }
+local mode_responsiveness = { 20, 5, 100, 50, 50 }
 
 -- #### ring-specific variables ####
 
