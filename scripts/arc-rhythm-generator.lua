@@ -92,21 +92,26 @@ end
 
 --- Renders a 12-step piano-style display, with the active note highlighted.
 ---@param ring integer 1-4
----@param active integer 0-127
-function draw_piano(ring, active)
-    -- TODO different levels depending on octave?
-
+---@param active_midi_note integer 0-127
+function draw_piano(ring, active_midi_note)
     -- C, C#, D, D#, E, F, F#, G, G#, A, A#, B
-    local is_white_key = { 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1 }
-    local key_width = 4 -- must be <= 5, since 64 / 12 = 5.3333...
-    -- TODO figure out what to do with the extra space; 5 * 12 = 60, so we have 4 spare LEDs to play with.
+    local IS_WHITE_KEY = { 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1 }
+    local KEY_WIDTH = 4 -- must be <= 5, since 64 / 12 = 5.3333...
+
+    --- Converts MIDI note value to 12-step note value (C=1, C#=2, D=3, etc.).
+    --- MIDI note values start with C=0, but we are 1-indexing midi notes in this function.
+    ---@param midi_note integer 0-127
+    ---@return integer 1-12
+    local function from_midi_note(midi_note)
+        return wrap(midi_note + 1, 1, 12)
+    end
 
     --- Picks the starting LED for drawing segments.
     ---@param note integer (C=1, C#=2, D=3, D#=4, etc; note that this doesn't quite align with MIDI note values, where C1=0)
     ---@return integer 1-64
-    local function pick_start(note)
-        local start = (wrap(note, 1, 12) - 1) * key_width + 1
-        local offset = 6 * key_width -- so center of keyboard is at the top of the ring.
+    local function segment_start(note)
+        local start = (wrap(note, 1, 12) - 1) * KEY_WIDTH + 1
+        local offset = 6 * KEY_WIDTH -- so center of keyboard is at the top of the ring.
         return wrap(start - offset, 1, 64)
     end
 
@@ -115,13 +120,15 @@ function draw_piano(ring, active)
 
     -- draw keys
     for i = 1, 12 do
-        local level = is_white_key[i] == 1 and 2 or 0
-        draw_segment(ring, pick_start(i), key_width, level)
+        local level = IS_WHITE_KEY[i] == 1 and 2 or 0
+        draw_segment(ring, segment_start(i), KEY_WIDTH, level)
     end
 
     -- highlight active note
-    local active_note = wrap((active + 1), 1, 12) -- C=1, C#=2, D=3, etc...
-    draw_segment(ring, pick_start(active_note), key_width, 15)
+    draw_segment(ring, segment_start(from_midi_note(active_midi_note)), KEY_WIDTH, 15)
+
+    -- TODO show details about octave
+    -- since max key_width is 5, we have at least 4 spare LEDs to play with (5 * 12 = 60)
 end
 
 function draw_midi_notes_mode()
