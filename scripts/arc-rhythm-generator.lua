@@ -11,6 +11,8 @@ TODO:
 
 -- TODO: make this configurable from the arc.
 -- TODO: implement external midi clock (will need to disable internal midi clock)
+--   Not totally sure how to go about this, and it seems helpers for this are planned;
+--   https://github.com/monome/iii/discussions/23#discussion-8188837
 local TEMPO_BPM = 120
 
 -- #### mode-specific variables ####
