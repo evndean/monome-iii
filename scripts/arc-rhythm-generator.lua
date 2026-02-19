@@ -9,17 +9,20 @@ TODO:
 - add ability to reset after n clock ticks
 ]]
 
--- TODO: make this configurable from the arc.
 -- TODO: implement external midi clock (will need to disable internal midi clock)
 --   Not totally sure how to go about this, and it seems helpers for this are planned;
 --   https://github.com/monome/iii/discussions/23#discussion-8188837
-local TEMPO_BPM = 120
+
+local tempo_bpm = 120
+local MIN_BPM = 40
+local MAX_BPM = 240
+local tempo_changed_on_last_tick = false
 
 -- #### mode-specific variables ####
 
 local mode = 1
-local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels" } -- TODO split modes into two pages: "perform" and "config"
-local mode_responsiveness = { 20, 5, 100, 50, 50 }
+local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels", "clock" } -- TODO split modes into two pages: "perform" and "config"
+local mode_responsiveness = { 20, 5, 100, 50, 50, 50 }
 
 -- #### ring-specific variables ####
 
@@ -52,6 +55,13 @@ function arc(ring, delta)
     elseif mode == 5 then
         ring_midi_channels[ring] = clamp(ring_midi_channels[ring] + delta, 1, 16)
         ps("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
+    elseif mode == 6 then
+        -- clock is a bit different; for now, only ring 1 does anything
+        if ring == 1 then
+            tempo_bpm = clamp(tempo_bpm + delta, MIN_BPM, MAX_BPM)
+            tempo_changed_on_last_tick = true
+            ps("set tempo for ring: %d: %d", ring, tempo_bpm)
+        end
     end
 end
 
@@ -185,6 +195,34 @@ function draw_patterns_mode(background_level, trigger_level, pattern_level)
     end
 end
 
+--- Draws a level indicator.
+---@param ring integer 1-4
+---@param val integer
+---@param min_val integer
+---@param max_val integer
+function draw_level(ring, val, min_val, max_val)
+    arc_led_all(ring, 0)
+
+    local level = linlin(min_val, max_val, 1, 64, val)
+    local last_full_strength_led = math.floor(level)
+    local next_led_level = math.floor(linlin(0, 1, 0, 15, level % 1))
+
+    for led = 1, last_full_strength_led do
+        arc_led(ring, led, 15)
+    end
+    if last_full_strength_led ~= 64 then
+        arc_led(ring, last_full_strength_led + 1, next_led_level)
+    end
+end
+
+function draw_clock_mode()
+    for ring = 1, 4 do
+        arc_led_all(ring, 0)
+    end
+
+    draw_level(1, tempo_bpm, MIN_BPM, MAX_BPM)
+end
+
 function redraw()
     if mode == 1 then
         draw_patterns_mode(0, 12, 4)
@@ -196,6 +234,8 @@ function redraw()
         draw_midi_notes_mode()
     elseif mode == 5 then
         draw_midi_channels_mode()
+    elseif mode == 6 then
+        draw_clock_mode()
     end
 
     arc_refresh()
@@ -217,10 +257,8 @@ function pattern_tick()
     redraw()
 end
 
-function tempo_tick()
-    print("tempo tick")
-
-    -- turn off notes from previous tick.
+local function maybe_send_midi_notes()
+    -- turn off notes sent on last call.
     for ring = 1, 4 do
         if ring_midi_sent_on_last_tick[ring] == true then
             midi_note_off(ring_midi_notes[ring], 127, ring_midi_channels[ring])
@@ -239,6 +277,29 @@ function tempo_tick()
     end
 end
 
+--- Calculates the number of milliseconds for a single 16th-note.
+---@param bpm integer
+---@return integer
+local function bpm_to_ms(bpm)
+    -- ms/second * seconds/minute * minutes/beat * beat/steps --> ms/step
+    return math.floor(1000 * 60 / bpm / 16)
+end
+
+local metro_tempo
+
+local function tick_tempo()
+    -- resolution isn't great as we get into higher BPMs...
+    -- TODO find a way to address this?
+    if tempo_changed_on_last_tick then
+        tempo_changed_on_last_tick = false
+        metro.stop(metro_tempo)
+        ps("new tempo ms: %d", bpm_to_ms(tempo_bpm))
+        metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
+    end
+
+    maybe_send_midi_notes()
+end
+
 function init()
     print("\n arc rhythm generator")
 
@@ -254,8 +315,7 @@ function init()
 
     local pt = metro.new(pattern_tick, 33)
 
-    local sixteenth_note_ms = math.floor(60000 / (TEMPO_BPM * 4))
-    local tt = metro.new(tempo_tick, sixteenth_note_ms)
+    metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
 end
 
 init()
