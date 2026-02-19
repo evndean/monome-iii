@@ -18,6 +18,9 @@ local MIN_BPM = 40
 local MAX_BPM = 240
 local tempo_changed_on_last_tick = false
 
+local refresh_rate_ms = 15
+local needs_redraw = false
+
 -- #### mode-specific variables ####
 
 local mode = 1
@@ -239,6 +242,8 @@ function redraw()
     end
 
     arc_refresh()
+
+    needs_redraw = false
 end
 
 function pattern_tick()
@@ -254,7 +259,7 @@ function pattern_tick()
         ring_positions[ring] = wrap(ring_positions[ring] + ring_speeds[ring], 1, #ring_patterns[ring])
     end
 
-    redraw()
+    needs_redraw = true
 end
 
 local function maybe_send_midi_notes()
@@ -285,8 +290,13 @@ local function bpm_to_ms(bpm)
     return math.floor(1000 * 60 / bpm / 16)
 end
 
-local metro_tempo
+local function tick_redraw()
+    if needs_redraw then
+        redraw()
+    end
+end
 
+local metro_tempo
 local function tick_tempo()
     -- resolution isn't great as we get into higher BPMs...
     -- TODO find a way to address this?
@@ -315,6 +325,7 @@ function init()
 
     local pt = metro.new(pattern_tick, 33)
 
+    metro.new(tick_redraw, refresh_rate_ms)
     metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
 end
 
