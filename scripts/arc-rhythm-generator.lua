@@ -99,7 +99,7 @@ end
 ---@param start integer 1-64
 ---@param width integer 1-64
 ---@param level integer 1-15
-function draw_segment(ring, start, width, level)
+local function draw_segment(ring, start, width, level)
     for i = 1, width do
         arc_led(ring, wrap(start + i - 1, 1, 64), level)
     end
@@ -108,7 +108,7 @@ end
 --- Renders a 12-step piano-style display, with the active note highlighted.
 ---@param ring integer 1-4
 ---@param active_midi_note integer 0-127
-function draw_piano(ring, active_midi_note)
+local function draw_piano(ring, active_midi_note)
     -- C, C#, D, D#, E, F, F#, G, G#, A, A#, B
     local IS_WHITE_KEY = { 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1 }
     local KEY_WIDTH = 3 -- must be <= 5, since 64 / 12 = 5.3333...
@@ -149,13 +149,13 @@ function draw_piano(ring, active_midi_note)
     draw_segment(ring, 32, 2, octave_level)
 end
 
-function draw_midi_notes_mode()
+local function draw_midi_notes_mode()
     for ring = 1, 4 do
         draw_piano(ring, ring_midi_notes[ring])
     end
 end
 
-function draw_midi_channels_mode()
+local function draw_midi_channels_mode()
     for ring = 1, 4 do
         -- valid values for channel are 1-16
         -- 64 / 16 = 4
@@ -179,7 +179,7 @@ end
 ---@param background_level integer 0-15
 ---@param trigger_level integer 0-15
 ---@param pattern_level integer 0-15
-function draw_patterns_mode(background_level, trigger_level, pattern_level)
+local function draw_patterns_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
         -- set background level
         arc_led_all(ring, background_level)
@@ -203,7 +203,7 @@ end
 ---@param val integer
 ---@param min_val integer
 ---@param max_val integer
-function draw_level(ring, val, min_val, max_val)
+local function draw_level(ring, val, min_val, max_val)
     arc_led_all(ring, 0)
 
     local level = linlin(min_val, max_val, 1, 64, val)
@@ -218,7 +218,7 @@ function draw_level(ring, val, min_val, max_val)
     end
 end
 
-function draw_clock_mode()
+local function draw_clock_mode()
     for ring = 1, 4 do
         arc_led_all(ring, 0)
     end
@@ -226,7 +226,7 @@ function draw_clock_mode()
     draw_level(1, tempo_bpm, MIN_BPM, MAX_BPM)
 end
 
-function redraw()
+local function redraw()
     if mode == 1 then
         draw_patterns_mode(0, 12, 4)
     elseif mode == 2 then
@@ -246,7 +246,7 @@ function redraw()
     needs_redraw = false
 end
 
-function pattern_tick()
+local function pattern_tick()
     for ring = 1, 4 do
         -- check if any of the notes we're about to pass through should trigger a note on event.
         for i = 1, ring_speeds[ring] do
@@ -310,7 +310,7 @@ local function tick_tempo()
     maybe_send_midi_notes()
 end
 
-function init()
+local function init()
     print("\n arc rhythm generator")
 
     -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
