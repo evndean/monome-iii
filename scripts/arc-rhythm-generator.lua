@@ -5,6 +5,7 @@ inspired by the max patch by stretta
 https://youtu.be/HM0EBvJe1s0
 
 TODO:
+- fix midi note emission; seems to be a bit janky right now
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
 ]]
