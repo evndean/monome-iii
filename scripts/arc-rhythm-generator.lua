@@ -51,7 +51,7 @@ function arc(ring, delta)
         ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
         ps("set density for ring: %d: %d", ring, ring_densities[ring])
     elseif mode == 3 then
-        ring_patterns[ring] = pattern_gen(64, MAX_DENSITY)
+        ring_patterns[ring] = new_pattern(64, MAX_DENSITY)
         ps("generated new pattern for ring: %d", ring)
     elseif mode == 4 then
         ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
@@ -91,9 +91,11 @@ local function step_is_active(ring, step)
     return ring_patterns[ring][s] <= ring_densities[ring]
 end
 
--- each step in a pattern is a density value, from 1 to max_density.
--- a step with a value of 1 will always trigger.
-function pattern_gen(len, max_density)
+--- Generates a new pattern of a given length with random densities.
+---@param len integer
+---@param max_density integer
+---@return table
+function new_pattern(len, max_density)
     p = {}
     -- have the first note always trigger.
     p[1] = 1
@@ -105,7 +107,7 @@ function pattern_gen(len, max_density)
     return p
 end
 
---- Call arc_led for a block of consecutive LEDs, beginning at `start`.
+--- Calls arc_led for a block of consecutive LEDs, beginning at `start`.
 ---@param ring integer 1-4
 ---@param start integer 1-64
 ---@param width integer 1-64
@@ -339,7 +341,7 @@ local function setup()
 
     -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
     for n = 1, 4 do
-        ring_patterns[n] = pattern_gen(64, MAX_DENSITY)
+        ring_patterns[n] = new_pattern(64, MAX_DENSITY)
     end
 
     -- set sensitivity based on mode
