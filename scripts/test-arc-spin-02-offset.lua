@@ -6,8 +6,8 @@ using floats for offset and speed.
 
 ]]
 
-local offset = { 1, 1, 1, 1 } -- float; where we are in a given tick.
-local speed = { 0.5, 0.5, 0.5, 0.5 }  -- float; how far to advance per tick.
+local offset = { 1, 1, 1, 1 }        -- float; where we are in a given tick.
+local speed = { 0.5, 0.5, 0.5, 0.5 } -- float; how far to advance per tick.
 local max_speed = 4
 local brightness = 15
 local refresh_rate_ms = 12
