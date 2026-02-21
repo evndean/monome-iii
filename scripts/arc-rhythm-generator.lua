@@ -7,6 +7,7 @@ https://youtu.be/HM0EBvJe1s0
 TODO:
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
+- maybe add speed quantization?
 ]]
 
 -- TODO: implement external midi clock (will need to disable internal midi clock)
