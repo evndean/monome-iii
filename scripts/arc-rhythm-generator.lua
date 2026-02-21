@@ -236,6 +236,10 @@ local function draw_clock_mode()
 end
 
 local function redraw()
+    if not needs_redraw then
+        return
+    end
+
     if mode == 1 then
         draw_patterns_mode(0, 12, 4)
     elseif mode == 2 then
@@ -316,12 +320,6 @@ local function bpm_to_ms(bpm)
     return math.floor(1000 * 60 / bpm / 16)
 end
 
-local function tick_redraw()
-    if needs_redraw then
-        redraw()
-    end
-end
-
 local metro_tempo
 local function tick_tempo()
     -- resolution isn't great as we get into higher BPMs...
@@ -336,7 +334,7 @@ local function tick_tempo()
     send_midi_notes()
 end
 
-local function init()
+local function setup()
     print("\n arc rhythm generator")
 
     -- initialize patterns. there are 64 leds in each ring, so make each pattern 64 steps long to start.
@@ -348,10 +346,10 @@ local function init()
     for ring = 1, 4 do
         arc_res(ring, mode_responsiveness[mode])
     end
-
-    metro.new(step_advance, refresh_rate_ms)
-    metro.new(tick_redraw, refresh_rate_ms)
-    metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
 end
 
-init()
+setup()
+
+metro.new(step_advance, refresh_rate_ms)
+metro.new(redraw, refresh_rate_ms)
+metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
