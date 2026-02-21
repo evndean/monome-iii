@@ -5,7 +5,6 @@ inspired by the max patch by stretta
 https://youtu.be/HM0EBvJe1s0
 
 TODO:
-- fix midi note emission; seems to be a bit janky right now
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
 ]]
@@ -79,6 +78,16 @@ function arc_key(z)
             arc_res(ring, mode_responsiveness[mode])
         end
     end
+end
+
+--- Whether a step is active.
+---@param ring integer 1-4
+---@param step integer 1-64
+---@return boolean
+local function step_is_active(ring, step)
+    -- Just in case we get passed an out-of-bound step value...
+    local s = wrap(step, 1, #ring_patterns[ring])
+    return ring_patterns[ring][s] <= ring_densities[ring]
 end
 
 -- each step in a pattern is a density value, from 1 to max_density.
@@ -187,8 +196,7 @@ local function draw_patterns_mode(background_level, trigger_level, pattern_level
 
         -- draw patterns.
         for step = 1, #ring_patterns[ring] do
-            local is_active = ring_patterns[ring][step] <= ring_densities[ring]
-            if is_active then
+            if step_is_active(ring, step) then
                 local offset = math.floor(ring_offsets[ring])
                 local led = wrap(step + offset - 1, 1, 64)
                 arc_led(ring, led, pattern_level)
@@ -251,21 +259,24 @@ end
 local function step_advance()
     for ring = 1, 4 do
         -- advance the position.
-        local last_pos = math.floor(ring_offsets[ring])
-        ring_offsets[ring] = wrap(ring_offsets[ring] + ring_speeds[ring], 1, #ring_patterns[ring])
-        local next_pos = math.floor(ring_offsets[ring])
-        if last_pos == next_pos then
-            -- we didn't advance, nothing to do.
+        local last_offset_int = math.floor(ring_offsets[ring])
+        local next_offset = ring_offsets[ring] + ring_speeds[ring] -- we'll wrap later.
+        local next_offset_int = math.floor(next_offset)
+
+        ring_offsets[ring] = wrap(next_offset, 1, 64)
+
+        -- see if we moved forward a full step.
+        if last_offset_int == next_offset_int then
+            -- we didn't, nothing to do.
             goto continue_loop
         end
 
         needs_redraw = true
 
-        -- see if we passed any triggering events.
-        local num_steps_advanced = wrap(next_pos - last_pos, 1, #ring_patterns[ring])
-        for i = 1, num_steps_advanced do
-            local p = last_pos + 1 - 1
-            if ring_patterns[ring][p] <= ring_densities[ring] then
+        -- see if we passed any active steps.
+        for offset = last_offset_int, next_offset_int - 1 do
+            local playhead_position = wrap(1 - offset, 1, 64)
+            if step_is_active(ring, playhead_position) then
                 ring_midi_should_emit[ring] = true
                 break
             end
@@ -287,7 +298,7 @@ local function maybe_send_midi_notes()
     -- send new midi notes.
     for ring = 1, 4 do
         if ring_midi_should_emit[ring] == true then
-            ps("emitting note for ring %d", ring)
+            ps("[%d] emitting note for ring %d", get_time(), ring)
             midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
             ring_midi_sent_on_last_tick[ring] = true
             ring_midi_should_emit[ring] = false
