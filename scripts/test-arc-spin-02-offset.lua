@@ -2,8 +2,9 @@
 test arc spin
 
 very basic experiment in rotating leds.
-using floats for offset and speed.
+turn the dials to adjust the speed of rotation.
 
+using floats for offset and speed.
 ]]
 
 local offset = { 1, 1, 1, 1 }        -- float; where we are in a given tick.

@@ -1,6 +1,8 @@
 --[[
 test arc blink
 
+turn the dials to adjust the blink rate.
+
 fairly simple approach.
 record the last time we turned the leds on, then compare against current time.
 ]]

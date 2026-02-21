@@ -2,6 +2,7 @@
 test arc level
 
 very basic experiment in setting led levels in arc.
+turn the dials to change the number of leds turned on.
 
 pulling from this discussion thread: https://github.com/monome/iii/discussions/36.
 that was written for the beta version of iii, so need to adjust some.

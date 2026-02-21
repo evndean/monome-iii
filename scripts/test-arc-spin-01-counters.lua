@@ -2,10 +2,10 @@
 test arc spin
 
 very basic experiment in rotating leds.
+turn the dials to adjust the speed of rotation.
 
 note: because we're using counts + modular arithmetic, we can't ever reverse direction.
-in practice, we probably don't want this; we want to be able to reverse direction.
-
+in practice, we probably don't want this; it seems pretty limiting.
 ]]
 
 local pos = { 1, 1, 1, 1 }
