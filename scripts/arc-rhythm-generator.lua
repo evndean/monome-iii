@@ -1,18 +1,18 @@
 --[[
 arc rhythm generator
 
-inspired by the max patch by stretta
+inspired by the max patch by stretta.
 https://youtu.be/HM0EBvJe1s0
+https://github.com/stretta/gridlab
 
 TODO:
 - add tests (? does this make sense to do ?)
 - add ability to reset after n clock ticks
 - maybe add speed quantization?
+- external midi clock (will need to disable internal midi clock)
+    not totally sure how to go about this. it seems helpers for this are planned;
+    https://github.com/monome/iii/discussions/23#discussion-8188837
 ]]
-
--- TODO: implement external midi clock (will need to disable internal midi clock)
---   Not totally sure how to go about this, and it seems helpers for this are planned;
---   https://github.com/monome/iii/discussions/23#discussion-8188837
 
 local tempo_bpm = 120
 local MIN_BPM = 40
@@ -168,9 +168,7 @@ end
 
 local function draw_midi_channels_mode()
     for ring = 1, 4 do
-        -- valid values for channel are 1-16
-        -- 64 / 16 = 4
-        local step_width = 4
+        local step_width = 4 -- channel can be 1-16, and 64 / 16 = 4
 
         -- set background level
         arc_led_all(ring, 0)
@@ -276,6 +274,8 @@ local function step_advance()
 
         -- see if we passed any active steps.
         for offset = last_offset_int, next_offset_int - 1 do
+            -- since offset is used to draw the patterns, the playhead position is effectively
+            -- moving backwards relative to the start of the pattern.
             local playhead_position = wrap(1 - offset, 1, 64)
             if step_is_active(ring, playhead_position) then
                 ring_midi_should_emit[ring] = true
@@ -287,8 +287,9 @@ local function step_advance()
     end
 end
 
-local function maybe_send_midi_notes()
+local function send_midi_notes()
     -- turn off notes sent on last call.
+    -- TODO: send them for the correct channel (note gets stuck if you change channels between on and off)
     for ring = 1, 4 do
         if ring_midi_sent_on_last_tick[ring] == true then
             midi_note_off(ring_midi_notes[ring], 127, ring_midi_channels[ring])
@@ -332,7 +333,7 @@ local function tick_tempo()
         metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
     end
 
-    maybe_send_midi_notes()
+    send_midi_notes()
 end
 
 local function init()
