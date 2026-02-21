@@ -26,13 +26,13 @@ local needs_redraw = false
 
 local mode = 1
 local mode_name = { "speed", "density", "pattern_gen", "midi_notes", "midi_channels", "clock" } -- TODO split modes into two pages: "perform" and "config"
-local mode_responsiveness = { 20, 5, 100, 50, 50, 50 }
+local mode_responsiveness = { 10, 5, 100, 50, 50, 50 }
 
 -- #### ring-specific variables ####
 
-local ring_positions = { 1, 1, 1, 1 }
-local ring_speeds = { 1, 1, 1, 1 } -- TODO: see if we can make speed 1 slower (i.e. decouple redraw from step progression?)
-local MAX_SPEED = 16
+local ring_offsets = { 1, 1, 1, 1 }        -- float; where we are in a given tick.
+local ring_speeds = { 0.5, 0.5, 0.5, 0.5 } -- float; how far to advance per tick.
+local MAX_SPEED = 4
 local ring_densities = { 1, 1, 1, 1 }
 local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
@@ -45,8 +45,8 @@ local ring_midi_notes = { 53, 58, 61, 63 }
 
 function arc(ring, delta)
     if mode == 1 then
-        ring_speeds[ring] = clamp(ring_speeds[ring] + delta, -MAX_SPEED, MAX_SPEED)
-        ps("set speed for ring: %d: %d", ring, ring_speeds[ring])
+        ring_speeds[ring] = clamp(ring_speeds[ring] + delta / 32, -MAX_SPEED, MAX_SPEED)
+        ps("set speed for ring: %d: %f", ring, ring_speeds[ring])
     elseif mode == 2 then
         ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
         ps("set density for ring: %d: %d", ring, ring_densities[ring])
@@ -189,7 +189,8 @@ local function draw_patterns_mode(background_level, trigger_level, pattern_level
         for step = 1, #ring_patterns[ring] do
             local is_active = ring_patterns[ring][step] <= ring_densities[ring]
             if is_active then
-                local led = wrap(step + ring_positions[ring] - 1, 1, 64)
+                local offset = math.floor(ring_offsets[ring])
+                local led = wrap(step + offset - 1, 1, 64)
                 arc_led(ring, led, pattern_level)
             end
         end
@@ -247,20 +248,31 @@ local function redraw()
     needs_redraw = false
 end
 
-local function pattern_tick()
+local function step_advance()
     for ring = 1, 4 do
-        -- check if any of the notes we're about to pass through should trigger a note on event.
-        for i = 1, ring_speeds[ring] do
-            if ring_patterns[ring][wrap(ring_positions[ring] + i, 1, #ring_patterns[ring])] <= ring_densities[ring] then
+        -- advance the position.
+        local last_pos = math.floor(ring_offsets[ring])
+        ring_offsets[ring] = wrap(ring_offsets[ring] + ring_speeds[ring], 1, #ring_patterns[ring])
+        local next_pos = math.floor(ring_offsets[ring])
+        if last_pos == next_pos then
+            -- we didn't advance, nothing to do.
+            goto continue_loop
+        end
+
+        needs_redraw = true
+
+        -- see if we passed any triggering events.
+        local num_steps_advanced = wrap(next_pos - last_pos, 1, #ring_patterns[ring])
+        for i = 1, num_steps_advanced do
+            local p = last_pos + 1 - 1
+            if ring_patterns[ring][p] <= ring_densities[ring] then
                 ring_midi_should_emit[ring] = true
+                break
             end
         end
 
-        -- advance the position.
-        ring_positions[ring] = wrap(ring_positions[ring] + ring_speeds[ring], 1, #ring_patterns[ring])
+        ::continue_loop::
     end
-
-    needs_redraw = true
 end
 
 local function maybe_send_midi_notes()
@@ -324,8 +336,7 @@ local function init()
         arc_res(ring, mode_responsiveness[mode])
     end
 
-    local pt = metro.new(pattern_tick, 33)
-
+    metro.new(step_advance, refresh_rate_ms)
     metro.new(tick_redraw, refresh_rate_ms)
     metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
 end
