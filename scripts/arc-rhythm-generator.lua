@@ -52,8 +52,8 @@ local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
 local ring_midi_should_emit = { false, false, false, false }
 local ring_midi_sent_on_last_tick = { false, false, false, false }
-local ring_midi_channels = { 1, 1, 1, 1 }
-local ring_midi_notes = { 53, 58, 61, 63 }
+local ring_midi_channels = { 1, 1, 1, 1 }  -- default percussion track on OP-XY.
+local ring_midi_notes = { 53, 58, 61, 63 } -- usually kick, snare, and hat sounds on the OP-XY.
 
 -- ####
 
