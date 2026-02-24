@@ -159,10 +159,11 @@ function arc_key(z)
 
         mode = mode_names[i_next]
         ps("short press; switched to mode: %s", mode)
+        local res = mode_responsiveness_by_page[page][i_next]
 
         -- set sensitivity based on mode
         for ring = 1, 4 do
-            arc_res(ring, mode_responsiveness_by_page[page][mode])
+            arc_res(ring, res)
         end
 
         needs_redraw = true
@@ -447,7 +448,8 @@ local function setup()
 
     -- set sensitivity based on mode
     for ring = 1, 4 do
-        arc_res(ring, mode_responsiveness_by_page[page][mode])
+        local i_mode = indexOf(mode_names_by_page[page], mode)
+        arc_res(ring, mode_responsiveness_by_page[page][i_mode])
     end
 end
 
