@@ -63,7 +63,7 @@ local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
 local ring_is_muted = { false, false, false, false }
 local ring_midi_should_emit = { false, false, false, false }
-local ring_midi_sent_on_last_tick = { false, false, false, false }
+local ring_midi_last_sent = { nil, nil, nil, nil }
 local ring_midi_channels = { 1, 1, 1, 1 }  -- default percussion track on OP-XY.
 local ring_midi_notes = { 53, 58, 61, 63 } -- usually kick, snare, and hat sounds on the OP-XY.
 
@@ -393,12 +393,13 @@ end
 
 local function send_midi_notes()
     -- turn off notes sent on last call.
-    -- TODO: send them for the correct note (note gets stuck if you change notes between on and off)
-    -- TODO: send them for the correct channel (note gets stuck if you change channels between on and off)
     for ring = 1, 4 do
-        if ring_midi_sent_on_last_tick[ring] == true then
-            midi_note_off(ring_midi_notes[ring], 127, ring_midi_channels[ring])
-            ring_midi_sent_on_last_tick[ring] = false
+        if ring_midi_last_sent[ring] then
+            local last_note = ring_midi_last_sent[ring][1]
+            local last_vel = ring_midi_last_sent[ring][2]
+            local last_ch = ring_midi_last_sent[ring][3]
+            midi_note_off(last_note, last_vel, last_ch)
+            ring_midi_last_sent[ring] = nil
         end
     end
 
@@ -410,7 +411,7 @@ local function send_midi_notes()
             else
                 ps("[%d] emitting note for ring %d", get_time(), ring)
                 midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
-                ring_midi_sent_on_last_tick[ring] = true
+                ring_midi_last_sent[ring] = { ring_midi_notes[ring], 127, ring_midi_channels[ring] }
                 ring_midi_should_emit[ring] = false
             end
         end
