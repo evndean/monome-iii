@@ -393,6 +393,7 @@ end
 
 local function send_midi_notes()
     -- turn off notes sent on last call.
+    -- TODO: send them for the correct note (note gets stuck if you change notes between on and off)
     -- TODO: send them for the correct channel (note gets stuck if you change channels between on and off)
     for ring = 1, 4 do
         if ring_midi_sent_on_last_tick[ring] == true then
