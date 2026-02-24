@@ -37,6 +37,7 @@ local modes = {
     SPEED = "speed",
     DENSITY = "density",
     PATTERN_GEN = "pattern_gen",
+    MUTE = "mute",
     MIDI_NOTES = "midi_notes",
     MIDI_CHANNELS = "midi_channels",
     CLOCK = "clock",
@@ -46,14 +47,11 @@ local mode = modes.SPEED
 local mode_names_by_page = {}
 local mode_responsiveness_by_page = {}
 
-mode_names_by_page[pages.PERFORM] = { modes.SPEED, modes.DENSITY, modes.PATTERN_GEN }
-mode_responsiveness_by_page[pages.PERFORM] = { 10, 5, 100, }
+mode_names_by_page[pages.PERFORM] = { modes.SPEED, modes.DENSITY, modes.MUTE, modes.PATTERN_GEN }
+mode_responsiveness_by_page[pages.PERFORM] = { 10, 5, 200, 100 }
 
 mode_names_by_page[pages.CONFIG] = { modes.MIDI_NOTES, modes.MIDI_CHANNELS, modes.CLOCK }
 mode_responsiveness_by_page[pages.CONFIG] = { 50, 50, 50 }
-
-
-
 
 -- #### ring-specific variables ####
 
@@ -63,6 +61,7 @@ local MAX_SPEED = 4
 local ring_densities = { 1, 1, 1, 1 }
 local MAX_DENSITY = 512
 local ring_patterns = { {}, {}, {}, {} }
+local ring_is_muted = { false, false, false, false }
 local ring_midi_should_emit = { false, false, false, false }
 local ring_midi_sent_on_last_tick = { false, false, false, false }
 local ring_midi_channels = { 1, 1, 1, 1 }  -- default percussion track on OP-XY.
@@ -104,6 +103,11 @@ function arc(ring, delta)
     elseif mode == modes.DENSITY then
         ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
         ps("set density for ring: %d: %d", ring, ring_densities[ring])
+    elseif mode == modes.MUTE then
+        local val = ring_is_muted[ring] and 1 or 0
+        val = clamp(val + delta, 0, 1)
+        ring_is_muted[ring] = val == 1 and true or false
+        ps("set mute for ring: %d: %s", ring, ring_is_muted[ring])
     elseif mode == modes.PATTERN_GEN then
         ring_patterns[ring] = new_pattern(64, MAX_DENSITY)
         ps("generated new pattern for ring: %d", ring)
@@ -256,26 +260,45 @@ local function draw_midi_channels_mode()
     end
 end
 
+local function draw_pattern(ring, background_level, trigger_level, pattern_level)
+    -- set background level
+    arc_led_all(ring, background_level)
+
+    -- draw patterns.
+    for step = 1, #ring_patterns[ring] do
+        if step_is_active(ring, step) then
+            local offset = math.floor(ring_offsets[ring])
+            local led = wrap(step + offset - 1, 1, 64)
+            arc_led(ring, led, pattern_level)
+        end
+    end
+
+    -- draw trigger markers.
+    arc_led(ring, 1, trigger_level)
+end
+
 --- Draws a pattern, with an indicator for a trigger point, and all steps in the pattern.
 ---@param background_level integer 0-15
 ---@param trigger_level integer 0-15
 ---@param pattern_level integer 0-15
 local function draw_patterns_mode(background_level, trigger_level, pattern_level)
     for ring = 1, 4 do
-        -- set background level
-        arc_led_all(ring, background_level)
+        draw_pattern(ring, background_level, trigger_level, pattern_level)
+    end
+end
 
-        -- draw patterns.
-        for step = 1, #ring_patterns[ring] do
-            if step_is_active(ring, step) then
-                local offset = math.floor(ring_offsets[ring])
-                local led = wrap(step + offset - 1, 1, 64)
-                arc_led(ring, led, pattern_level)
-            end
-        end
+--- Draw method for mute mode.
+---@param background_level integer 0-15
+---@param trigger_level integer 0-15
+---@param pattern_level integer 0-15
+local function draw_mute_mode(background_level, trigger_level, pattern_level)
+    local function level(ring, val)
+        local muted_val = math.floor(val / 2)
+        return ring_is_muted[ring] and muted_val or val
+    end
 
-        -- draw trigger markers.
-        arc_led(ring, 1, trigger_level)
+    for ring = 1, 4 do
+        draw_pattern(ring, level(ring, background_level), level(ring, trigger_level), level(ring, pattern_level))
     end
 end
 
@@ -316,6 +339,8 @@ local function redraw()
         draw_patterns_mode(0, 12, 4)
     elseif mode == modes.DENSITY then
         draw_patterns_mode(0, 2, 8)
+    elseif mode == modes.MUTE then
+        draw_mute_mode(0, 0, 6)
     elseif mode == modes.PATTERN_GEN then
         draw_patterns_mode(1, 1, 8)
     elseif mode == modes.MIDI_NOTES then
@@ -378,10 +403,14 @@ local function send_midi_notes()
     -- send new midi notes.
     for ring = 1, 4 do
         if ring_midi_should_emit[ring] == true then
-            ps("[%d] emitting note for ring %d", get_time(), ring)
-            midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
-            ring_midi_sent_on_last_tick[ring] = true
-            ring_midi_should_emit[ring] = false
+            if ring_is_muted[ring] then
+                ps("[%d] ring is muted: %d", get_time(), ring)
+            else
+                ps("[%d] emitting note for ring %d", get_time(), ring)
+                midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
+                ring_midi_sent_on_last_tick[ring] = true
+                ring_midi_should_emit[ring] = false
+            end
         end
     end
 end
