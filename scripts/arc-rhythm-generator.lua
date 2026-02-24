@@ -57,6 +57,22 @@ local ring_midi_notes = { 53, 58, 61, 63 } -- usually kick, snare, and hat sound
 
 -- ####
 
+--- Generates a new pattern of a given length with random densities.
+---@param len integer
+---@param max_density integer
+---@return table
+local function new_pattern(len, max_density)
+    p = {}
+    -- have the first note always trigger.
+    p[1] = 1
+    -- randomly assign density for remaining notes.
+    -- TODO: come up with a more musical approach?
+    for i = 2, len do
+        p[i] = math.floor(math.random(2, max_density))
+    end
+    return p
+end
+
 function arc(ring, delta)
     if page == 1 then
         if mode == 1 then
@@ -139,22 +155,6 @@ local function step_is_active(ring, step)
     -- Just in case we get passed an out-of-bound step value...
     local s = wrap(step, 1, #ring_patterns[ring])
     return ring_patterns[ring][s] <= ring_densities[ring]
-end
-
---- Generates a new pattern of a given length with random densities.
----@param len integer
----@param max_density integer
----@return table
-function new_pattern(len, max_density)
-    p = {}
-    -- have the first note always trigger.
-    p[1] = 1
-    -- randomly assign density for remaining notes.
-    -- TODO: come up with a more musical approach?
-    for i = 2, len do
-        p[i] = math.floor(math.random(2, max_density))
-    end
-    return p
 end
 
 --- Calls arc_led for a block of consecutive LEDs, beginning at `start`.
