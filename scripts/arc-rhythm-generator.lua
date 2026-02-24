@@ -25,22 +25,35 @@ local needs_redraw = false
 
 -- #### mode-specific variables ####
 
-local page = 1
-local page_names = { "perform", "config" }
-
-local mode_by_page = { 1, 1 }
-local mode_names_by_page = {
-    { "speed",      "density",       "pattern_gen" },
-    { "midi_notes", "midi_channels", "clock" }
-}
-local mode_responsiveness_by_page = {
-    { 10, 5,  100, },
-    { 50, 50, 50 }
+local pages = {
+    PERFORM = "perform",
+    CONFIG = "config",
 }
 
-local mode = mode_by_page[page]
-local mode_name = mode_names_by_page[page]
-local mode_responsiveness = mode_responsiveness_by_page[page]
+local page = pages.PERFORM
+local page_names = { pages.PERFORM, pages.CONFIG }
+
+local modes = {
+    SPEED = "speed",
+    DENSITY = "density",
+    PATTERN_GEN = "pattern_gen",
+    MIDI_NOTES = "midi_notes",
+    MIDI_CHANNELS = "midi_channels",
+    CLOCK = "clock",
+}
+
+local mode = modes.SPEED
+local mode_names_by_page = {}
+local mode_responsiveness_by_page = {}
+
+mode_names_by_page[pages.PERFORM] = { modes.SPEED, modes.DENSITY, modes.PATTERN_GEN }
+mode_responsiveness_by_page[pages.PERFORM] = { 10, 5, 100, }
+
+mode_names_by_page[pages.CONFIG] = { modes.MIDI_NOTES, modes.MIDI_CHANNELS, modes.CLOCK }
+mode_responsiveness_by_page[pages.CONFIG] = { 50, 50, 50 }
+
+
+
 
 -- #### ring-specific variables ####
 
@@ -57,12 +70,23 @@ local ring_midi_notes = { 53, 58, 61, 63 } -- usually kick, snare, and hat sound
 
 -- ####
 
+-- Return the first index with the given value (or nil if not found).
+local function indexOf(array, value)
+    -- ipairs is efficient for array-like tables with sequential integer keys
+    for i, v in ipairs(array) do
+        if v == value then
+            return i -- Return the index (i) when the value (v) matches
+        end
+    end
+    return nil -- Return nil if the value is not found after iterating
+end
+
 --- Generates a new pattern of a given length with random densities.
 ---@param len integer
 ---@param max_density integer
 ---@return table
 local function new_pattern(len, max_density)
-    p = {}
+    local p = {}
     -- have the first note always trigger.
     p[1] = 1
     -- randomly assign density for remaining notes.
@@ -74,38 +98,30 @@ local function new_pattern(len, max_density)
 end
 
 function arc(ring, delta)
-    if page == 1 then
-        if mode == 1 then
-            ring_speeds[ring] = clamp(ring_speeds[ring] + delta / 32, -MAX_SPEED, MAX_SPEED)
-            ps("set speed for ring: %d: %f", ring, ring_speeds[ring])
-        elseif mode == 2 then
-            ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
-            ps("set density for ring: %d: %d", ring, ring_densities[ring])
-        elseif mode == 3 then
-            ring_patterns[ring] = new_pattern(64, MAX_DENSITY)
-            ps("generated new pattern for ring: %d", ring)
-        else
-            ps("unexpected page+mode: %d, %d", page, mode)
-        end
-    elseif page == 2 then
-        if mode == 1 then
-            ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
-            ps("set midi note for ring: %d: %d", ring, ring_midi_notes[ring])
-        elseif mode == 2 then
-            ring_midi_channels[ring] = clamp(ring_midi_channels[ring] + delta, 1, 16)
-            ps("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
-        elseif mode == 3 then
-            -- clock is a bit different; for now, only ring 1 does anything
-            if ring == 1 then
-                tempo_bpm = clamp(tempo_bpm + delta, MIN_BPM, MAX_BPM)
-                tempo_changed_on_last_tick = true
-                ps("set tempo for ring: %d: %d", ring, tempo_bpm)
-            end
-        else
-            ps("unexpected page+mode: %d, %d", page, mode)
+    if mode == modes.SPEED then
+        ring_speeds[ring] = clamp(ring_speeds[ring] + delta / 32, -MAX_SPEED, MAX_SPEED)
+        ps("set speed for ring: %d: %f", ring, ring_speeds[ring])
+    elseif mode == modes.DENSITY then
+        ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
+        ps("set density for ring: %d: %d", ring, ring_densities[ring])
+    elseif mode == modes.PATTERN_GEN then
+        ring_patterns[ring] = new_pattern(64, MAX_DENSITY)
+        ps("generated new pattern for ring: %d", ring)
+    elseif mode == modes.MIDI_NOTES then
+        ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
+        ps("set midi note for ring: %d: %d", ring, ring_midi_notes[ring])
+    elseif mode == modes.MIDI_CHANNELS then
+        ring_midi_channels[ring] = clamp(ring_midi_channels[ring] + delta, 1, 16)
+        ps("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
+    elseif mode == modes.CLOCK then
+        -- clock is a bit different; for now, only ring 1 does anything
+        if ring == 1 then
+            tempo_bpm = clamp(tempo_bpm + delta, MIN_BPM, MAX_BPM)
+            tempo_changed_on_last_tick = true
+            ps("set tempo for ring: %d: %d", ring, tempo_bpm)
         end
     else
-        ps("unexpected page: %d", page)
+        ps("unexpected mode: %s", mode)
     end
 end
 
@@ -115,13 +131,13 @@ local function key_timer()
     metro.stop(kt_metro)
     kt_metro = nil
 
-    page = wrap(page + 1, 1, #page_names)
-    ps("long press; switched to page %s", page_names[page])
+    local i_page = indexOf(page_names, page)
+    local i_next = wrap(i_page + 1, 1, #page_names)
 
-    mode = mode_by_page[page]
-    mode_name = mode_names_by_page[page]
-    mode_responsiveness = mode_responsiveness_by_page[page]
+    page = page_names[i_next]
+    ps("long press; switched to page %s", page)
 
+    mode = mode_names_by_page[page][1]
     needs_redraw = true
 end
 
@@ -133,12 +149,16 @@ function arc_key(z)
         metro.stop(kt_metro)
         kt_metro = nil
 
-        mode = wrap(mode + 1, 1, #mode_name)
-        ps("short press; switched to mode: %s", mode, mode_name[mode])
+        local mode_names = mode_names_by_page[page]
+        local i_mode = indexOf(mode_names, mode)
+        local i_next = wrap(i_mode + 1, 1, #mode_names)
+
+        mode = mode_names[i_next]
+        ps("short press; switched to mode: %s", mode)
 
         -- set sensitivity based on mode
         for ring = 1, 4 do
-            arc_res(ring, mode_responsiveness[mode])
+            arc_res(ring, mode_responsiveness_by_page[page][mode])
         end
 
         needs_redraw = true
@@ -292,28 +312,20 @@ local function redraw()
         return
     end
 
-    if page == 1 then
-        if mode == 1 then
-            draw_patterns_mode(0, 12, 4)
-        elseif mode == 2 then
-            draw_patterns_mode(0, 2, 8)
-        elseif mode == 3 then
-            draw_patterns_mode(1, 1, 8)
-        else
-            ps("unexpected page+mode: %d, %d", page, mode)
-        end
-    elseif page == 2 then
-        if mode == 1 then
-            draw_midi_notes_mode()
-        elseif mode == 2 then
-            draw_midi_channels_mode()
-        elseif mode == 3 then
-            draw_clock_mode()
-        else
-            ps("unexpected page+mode: %d, %d", page, mode)
-        end
+    if mode == modes.SPEED then
+        draw_patterns_mode(0, 12, 4)
+    elseif mode == modes.DENSITY then
+        draw_patterns_mode(0, 2, 8)
+    elseif mode == modes.PATTERN_GEN then
+        draw_patterns_mode(1, 1, 8)
+    elseif mode == modes.MIDI_NOTES then
+        draw_midi_notes_mode()
+    elseif mode == modes.MIDI_CHANNELS then
+        draw_midi_channels_mode()
+    elseif mode == modes.CLOCK then
+        draw_clock_mode()
     else
-        ps("unexpected page: %d", page)
+        ps("unexpected mode: %s", mode)
     end
 
     arc_refresh()
@@ -406,7 +418,7 @@ local function setup()
 
     -- set sensitivity based on mode
     for ring = 1, 4 do
-        arc_res(ring, mode_responsiveness[mode])
+        arc_res(ring, mode_responsiveness_by_page[page][mode])
     end
 end
 
