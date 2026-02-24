@@ -19,7 +19,7 @@ local MIN_BPM = 40
 local MAX_BPM = 240
 local tempo_changed_on_last_tick = false
 
-local double_click_ms = 200
+local long_press_ms = 500
 local refresh_rate_ms = 15
 local needs_redraw = false
 
@@ -99,33 +99,35 @@ local function key_timer()
     metro.stop(kt_metro)
     kt_metro = nil
 
-    mode = wrap(mode + 1, 1, #mode_name)
-    ps("single click; switched to mode: %s", mode, mode_name[mode])
+    page = wrap(page + 1, 1, #page_names)
+    ps("long press; switched to page %s", page_names[page])
 
-    -- set sensitivity based on mode
-    for ring = 1, 4 do
-        arc_res(ring, mode_responsiveness[mode])
-    end
+    mode = mode_by_page[page]
+    mode_name = mode_names_by_page[page]
+    mode_responsiveness = mode_responsiveness_by_page[page]
 
     needs_redraw = true
 end
 
 function arc_key(z)
     if z == 1 then
-        if kt_metro == nil then
-            kt_metro = metro.new(key_timer, double_click_ms, 1)
-        else
-            metro.stop(kt_metro)
-            kt_metro = nil
+        kt_metro = metro.new(key_timer, long_press_ms, 1)
+    elseif kt_metro then
+        -- short press
+        metro.stop(kt_metro)
+        kt_metro = nil
 
-            page = wrap(page + 1, 1, #page_names)
-            mode = mode_by_page[page]
-            mode_name = mode_names_by_page[page]
-            mode_responsiveness = mode_responsiveness_by_page[page]
-            ps("double click; switched to page %s", page_names[page])
+        mode = wrap(mode + 1, 1, #mode_name)
+        ps("short press; switched to mode: %s", mode, mode_name[mode])
 
-            needs_redraw = true
+        -- set sensitivity based on mode
+        for ring = 1, 4 do
+            arc_res(ring, mode_responsiveness[mode])
         end
+
+        needs_redraw = true
+    else
+        -- long press key up; nothing to do
     end
 end
 
