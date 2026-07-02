@@ -8,15 +8,15 @@ https://github.com/monome/iii
 
 ## Setup
 
-This project uses [asdf](https://asdf-vm.com) with the direnv and python plugins to create an isolated python3 environment for script development.
+This project uses [mise](https://mise.jdx.dev) to create an isolated python3 environment for script development.
 
 You don't need to do any of this to use these scripts.
-But, if you don't already have diii installed, you can use this to get up and running.
+But, if you don't already have diii installed, and don't want to use the web-based dii tool (https://monome.org/diii/), you can use this to get up and running.
 
-1. Install asdf: https://asdf-vm.com/guide/getting-started.html
-2. Install the asdf packages for this project:
+1. Install mise: https://mise.jdx.dev/getting-started.html 
+2. Install the mise tools for this project:
     ```
-    asdf install
+    mise install
     ````
 3. Install diii:
     ```
