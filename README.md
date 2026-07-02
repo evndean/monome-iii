@@ -20,7 +20,7 @@ But, if you don't already have diii installed, and don't want to use the web-bas
     ````
 3. Install diii:
     ```
-    pip install -r requirements.txt
+    mise run install 
     ```
 
 ## Scripts
