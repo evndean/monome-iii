@@ -9,7 +9,8 @@ that was written for the beta version of iii, so need to adjust some.
 ]]
 
 local rings = { 0, 0, 0, 0 }
-local responsiveness = { 1, 10, 100, 500 }
+-- 17 feels pretty close to matching the knob spin rate.
+local responsiveness = { 1, 17, 50, 100 }
 local brightness = 15
 local refresh_rate = 0.012 -- 12 ms
 local refresh = false
