@@ -19,8 +19,8 @@ local MIN_BPM = 40
 local MAX_BPM = 240
 local tempo_changed_on_last_tick = false
 
-local long_press_ms = 500
-local refresh_rate_ms = 15
+local long_press_sec = 0.5
+local refresh_rate = 0.015 -- 15 ms
 local needs_redraw = false
 
 -- #### mode-specific variables ####
@@ -69,6 +69,29 @@ local ring_midi_notes = { 53, 58, 61, 63 } -- usually kick, snare, and hat sound
 
 -- ####
 
+-- Stop and remove a metro.
+-- Returns a nil metro so the caller can clear the associated variable.
+---@param m Metro|nil
+---@return nil
+local function rm_metro(m)
+    if m then
+        m:stop()
+        metro.free(m.id)
+        -- this only clears the local variable; we have to return to callers
+        -- can have it cleared out.
+        m = nil
+    end
+    return m
+end
+
+-- Print log with a timestamp.
+---@param formatted_string string
+---@param ... any Values to format into the string
+local function log(formatted_string, ...)
+    local s = "[%f] " .. formatted_string
+    ps(s, get_time(), ...)
+end
+
 -- Return the first index with the given value (or nil if not found).
 local function indexOf(array, value)
     -- ipairs is efficient for array-like tables with sequential integer keys
@@ -80,7 +103,7 @@ local function indexOf(array, value)
     return nil -- Return nil if the value is not found after iterating
 end
 
---- Generates a new pattern of a given length with random densities.
+-- Generate a new pattern of a given length with random densities.
 ---@param len integer
 ---@param max_density integer
 ---@return table
@@ -96,69 +119,69 @@ local function new_pattern(len, max_density)
     return p
 end
 
-function arc(ring, delta)
+function event_arc(ring, delta)
     if mode == modes.SPEED then
         ring_speeds[ring] = clamp(ring_speeds[ring] + delta / 32, -MAX_SPEED, MAX_SPEED)
-        ps("set speed for ring: %d: %f", ring, ring_speeds[ring])
+        log("set speed for ring: %d: %f", ring, ring_speeds[ring])
     elseif mode == modes.DENSITY then
         ring_densities[ring] = clamp(ring_densities[ring] + delta, 0, MAX_DENSITY)
-        ps("set density for ring: %d: %d", ring, ring_densities[ring])
+        log("set density for ring: %d: %d", ring, ring_densities[ring])
     elseif mode == modes.MUTE then
         local val = ring_is_muted[ring] and 1 or 0
         val = clamp(val + delta, 0, 1)
         ring_is_muted[ring] = val == 1 and true or false
-        ps("set mute for ring: %d: %s", ring, ring_is_muted[ring])
+        log("set mute for ring: %d: %s", ring, ring_is_muted[ring])
     elseif mode == modes.PATTERN_GEN then
         ring_patterns[ring] = new_pattern(64, MAX_DENSITY)
-        ps("generated new pattern for ring: %d", ring)
+        log("generated new pattern for ring: %d", ring)
     elseif mode == modes.MIDI_NOTES then
         ring_midi_notes[ring] = clamp(ring_midi_notes[ring] + delta, 0, 127)
-        ps("set midi note for ring: %d: %d", ring, ring_midi_notes[ring])
+        log("set midi note for ring: %d: %d", ring, ring_midi_notes[ring])
     elseif mode == modes.MIDI_CHANNELS then
         ring_midi_channels[ring] = clamp(ring_midi_channels[ring] + delta, 1, 16)
-        ps("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
+        log("set midi channel for ring: %d: %d", ring, ring_midi_channels[ring])
     elseif mode == modes.CLOCK then
         -- clock is a bit different; for now, only ring 1 does anything
         if ring == 1 then
             tempo_bpm = clamp(tempo_bpm + delta, MIN_BPM, MAX_BPM)
             tempo_changed_on_last_tick = true
-            ps("set tempo for ring: %d: %d", ring, tempo_bpm)
+            log("set tempo for ring: %d: %d", ring, tempo_bpm)
         end
     else
-        ps("unexpected mode: %s", mode)
+        log("unexpected mode: %s", mode)
     end
 end
 
+---@type Metro|nil
 local kt_metro
 
 local function key_timer()
-    metro.stop(kt_metro)
-    kt_metro = nil
+    kt_metro = rm_metro(kt_metro)
 
     local i_page = indexOf(page_names, page)
     local i_next = wrap(i_page + 1, 1, #page_names)
 
     page = page_names[i_next]
-    ps("long press; switched to page %s", page)
+    log("long press; switched to page %s", page)
 
     mode = mode_names_by_page[page][1]
     needs_redraw = true
 end
 
-function arc_key(z)
+function event_arc_key(z)
     if z == 1 then
-        kt_metro = metro.new(key_timer, long_press_ms, 1)
+        kt_metro = metro.init(key_timer, long_press_sec, 1)
+        kt_metro:start()
     elseif kt_metro then
         -- short press
-        metro.stop(kt_metro)
-        kt_metro = nil
+        kt_metro = rm_metro(kt_metro)
 
         local mode_names = mode_names_by_page[page]
         local i_mode = indexOf(mode_names, mode)
         local i_next = wrap(i_mode + 1, 1, #mode_names)
 
         mode = mode_names[i_next]
-        ps("short press; switched to mode: %s", mode)
+        log("short press; switched to mode: %s", mode)
         local res = mode_responsiveness_by_page[page][i_next]
 
         -- set sensitivity based on mode
@@ -172,7 +195,7 @@ function arc_key(z)
     end
 end
 
---- Whether a step is active.
+---Whether a step is active.
 ---@param ring integer 1-4
 ---@param step integer 1-64
 ---@return boolean
@@ -182,7 +205,7 @@ local function step_is_active(ring, step)
     return ring_patterns[ring][s] <= ring_densities[ring]
 end
 
---- Calls arc_led for a block of consecutive LEDs, beginning at `start`.
+---Calls arc_led for a block of consecutive LEDs, beginning at `start`.
 ---@param ring integer 1-4
 ---@param start integer 1-64
 ---@param width integer 1-64
@@ -219,7 +242,7 @@ local function draw_piano(ring, active_midi_note)
     end
 
     -- set background level
-    arc_led_all(ring, 0)
+    arc_led_ring(ring, 0)
 
     -- draw keys
     for i = 1, 12 do
@@ -248,7 +271,7 @@ local function draw_midi_channels_mode()
         local step_width = 4 -- channel can be 1-16, and 64 / 16 = 4
 
         -- set background level
-        arc_led_all(ring, 0)
+        arc_led_ring(ring, 0)
 
         -- show active channel
         local active_channel = ring_midi_channels[ring]
@@ -263,7 +286,7 @@ end
 
 local function draw_pattern(ring, background_level, trigger_level, pattern_level)
     -- set background level
-    arc_led_all(ring, background_level)
+    arc_led_ring(ring, background_level)
 
     -- draw patterns.
     for step = 1, #ring_patterns[ring] do
@@ -309,7 +332,7 @@ end
 ---@param min_val integer
 ---@param max_val integer
 local function draw_level(ring, val, min_val, max_val)
-    arc_led_all(ring, 0)
+    arc_led_ring(ring, 0)
 
     local level = linlin(min_val, max_val, 1, 64, val)
     local last_full_strength_led = math.floor(level)
@@ -325,7 +348,7 @@ end
 
 local function draw_clock_mode()
     for ring = 1, 4 do
-        arc_led_all(ring, 0)
+        arc_led_ring(ring, 0)
     end
 
     draw_level(1, tempo_bpm, MIN_BPM, MAX_BPM)
@@ -351,7 +374,7 @@ local function redraw()
     elseif mode == modes.CLOCK then
         draw_clock_mode()
     else
-        ps("unexpected mode: %s", mode)
+        log("unexpected mode: %s", mode)
     end
 
     arc_refresh()
@@ -407,9 +430,9 @@ local function send_midi_notes()
     for ring = 1, 4 do
         if ring_midi_should_emit[ring] == true then
             if ring_is_muted[ring] then
-                ps("[%d] ring is muted: %d", get_time(), ring)
+                log("ring is muted: %d", ring)
             else
-                ps("[%d] emitting note for ring %d", get_time(), ring)
+                log("emitting note for ring %d", ring)
                 midi_note_on(ring_midi_notes[ring], 127, ring_midi_channels[ring])
                 ring_midi_last_sent[ring] = { ring_midi_notes[ring], 127, ring_midi_channels[ring] }
                 ring_midi_should_emit[ring] = false
@@ -418,23 +441,23 @@ local function send_midi_notes()
     end
 end
 
---- Calculates the number of milliseconds for a single 16th-note.
+--- Calculates the number of seconds for a single 16th-note.
 ---@param bpm integer
----@return integer
-local function bpm_to_ms(bpm)
-    -- ms/second * seconds/minute * minutes/beat * beat/steps --> ms/step
-    return math.floor(1000 * 60 / bpm / 16)
+---@return number
+local function bpm_to_seconds(bpm)
+    -- seconds/minute * minutes/beat * beat/steps --> seconds/step
+    return 60 / bpm / 16
 end
 
+---@type Metro
 local metro_tempo
 local function tick_tempo()
     -- resolution isn't great as we get into higher BPMs...
     -- TODO find a way to address this?
     if tempo_changed_on_last_tick then
         tempo_changed_on_last_tick = false
-        metro.stop(metro_tempo)
-        ps("new tempo ms: %d", bpm_to_ms(tempo_bpm))
-        metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
+        metro_tempo.time = bpm_to_seconds(tempo_bpm)
+        log("new tempo ms: %d", bpm_to_seconds(tempo_bpm))
     end
 
     send_midi_notes()
@@ -457,6 +480,10 @@ end
 
 setup()
 
-metro.new(step_advance, refresh_rate_ms)
-metro.new(redraw, refresh_rate_ms)
-metro_tempo = metro.new(tick_tempo, bpm_to_ms(tempo_bpm))
+local metro_step_advance = metro.init(step_advance, refresh_rate)
+local metro_redraw = metro.init(redraw, refresh_rate)
+metro_tempo = metro.init(tick_tempo, bpm_to_seconds(tempo_bpm))
+
+metro_step_advance:start()
+metro_redraw:start()
+metro_tempo:start()

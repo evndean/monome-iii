@@ -133,6 +133,7 @@ metro = {}
 ---The table returned by the metro.init function.
 ---@class Metro
 ---@field id integer
+---@field time number Time in seconds, can be manually adjusted.
 Metro = {}
 
 ---Initialize a metro m, with callback function, time in seconds, (optional)
@@ -151,9 +152,6 @@ function Metro.start(self, time_optional) end
 ---Stop metro.
 ---@param self Metro
 function Metro.stop(self) end
-
----Set metro time.
---- TODO: implement
 
 ---Free metro.
 ---@param id integer
