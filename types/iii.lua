@@ -49,11 +49,13 @@ arc = nil
 ---@type fun(z: integer)
 arc_key = nil
 
----@param ring integer
----@param div integer 1-1024
+--- Sets knob tick division (sensitivity).
+---@param ring integer 1-4
+---@param div integer 1-1024 (1 = max resolution)
 function arc_res(ring, div) end
 
----@param ring integer
+-- Sets level for a specific LED.
+---@param ring integer 1-4
 ---@param led integer 1-64
 ---@param level integer 0-15
 function arc_led(ring, led, level) end
@@ -66,6 +68,7 @@ function arc_led(ring, led, level) end
 ---@param level_max? integer Optional upper bound (default 15)
 function arc_led_rel(ring, led, level, level_min, level_max) end
 
+-- Sets all LEDs to level.
 ---@param ring integer
 ---@param level integer 0-15
 function arc_led_all(ring, level) end
@@ -80,9 +83,10 @@ function arc_refresh() end
 ---@type fun(ch: integer, status: integer, data1: integer, data2: integer)
 midi_rx = nil
 
+--- Sends a MIDI Note On message.
 ---@param note integer 0-127
 ---@param vel integer 0-127
----@param ch integer
+---@param ch integer 1-16
 function midi_note_on(note, vel, ch) end
 
 --- Sends a MIDI Note Off message.
@@ -159,7 +163,7 @@ function pset_write(index, data) end
 ---@param str string
 function dostring(str) end
 
---- Returns the system time (typically in seconds or milliseconds depending on environment).
+--- Returns the time since boot in milliseconds.
 ---@return number
 function get_time() end
 

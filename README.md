@@ -1,10 +1,6 @@
-# monome iii
+# monome-iii
 
-A collection of monome iii scripts and some basic tooling for working on them.
-
-https://monome.org/docs/iii/
-
-https://github.com/monome/iii
+A collection of [monome iii](https://github.com/monome/iii) scripts and some basic tooling for working on them.
 
 ## Setup
 
@@ -31,3 +27,8 @@ Various iii scripts.
 
 I've written type definitions for current iii commands.
 If you're using the Lua Language Server, this should prevent your IDE from flagging iii functions as undefined.
+
+## Resources
+
+- https://monome.org/docs/iii/
+- https://github.com/monome/iii
