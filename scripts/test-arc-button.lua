@@ -14,9 +14,25 @@ local long_press_s = 0.5
 local refresh_rate = 0.012 -- 12 ms
 local refresh = false
 
--- simple helper function for logging with a timestamp.
+-- Log with a timestamp.
 local function log(s)
     ps("[%f] %s", get_time(), s)
+end
+
+-- Stop and remove a metro.
+-- Returns a nil value so the source metro can be cleared out as well.
+---@param m Metro|nil
+---@return nil
+local function rm_metro(m)
+    if m then
+        m:stop()
+        metro.free(m.id)
+        -- note: this only removes the reference within this function.
+        -- callers will still need to reassign to nil, which is why we this
+        -- function returns nil.
+        m = nil
+    end
+    return nil
 end
 
 --[[
@@ -42,12 +58,7 @@ local dc_metro
 
 local function dc_key_timer()
     log("single click")
-    if dc_metro then
-        dc_metro:stop()
-        metro.free(dc_metro.id)
-        dc_metro = nil
-    end
-
+    dc_metro = rm_metro(dc_metro)
     mode = wrap(mode + 1, 0, 1)
     refresh = true
 end
@@ -59,9 +70,7 @@ local function handle_double_click(z)
             dc_metro:start()
         else
             log("double click")
-            dc_metro:stop()
-            metro.free(dc_metro.id)
-            dc_metro = nil
+            dc_metro = rm_metro(dc_metro)
             meta = wrap(meta + 1, 0, 1)
             refresh = true
         end
@@ -79,11 +88,7 @@ local lp_metro
 
 local function lp_key_timer()
     log("keylong")
-    if lp_metro then
-        lp_metro:stop()
-        metro.free(lp_metro.id)
-        lp_metro = nil
-    end
+    lp_metro = rm_metro(lp_metro)
     held = true
     refresh = true
 end
@@ -94,9 +99,7 @@ local function handle_long_press(z)
         lp_metro:start()
     elseif lp_metro then
         log("keyshort")
-        lp_metro:stop()
-        metro.free(lp_metro.id)
-        lp_metro = nil
+        lp_metro = rm_metro(lp_metro)
         mode = wrap(mode + 1, 0, 1)
         refresh = true
     else
@@ -122,19 +125,11 @@ local a_dc_metro
 local a_lp_metro
 
 local function stop_dc_metro()
-    if a_dc_metro then
-        a_dc_metro:stop()
-        metro.free(a_dc_metro.id)
-        a_dc_metro = nil
-    end
+    a_dc_metro = rm_metro(a_dc_metro)
 end
 
 local function stop_lp_metro()
-    if a_lp_metro then
-        a_lp_metro:stop()
-        metro.free(a_lp_metro.id)
-        a_lp_metro = nil
-    end
+    a_lp_metro = rm_metro(a_lp_metro)
 end
 
 local function a_dc_key_timer()
