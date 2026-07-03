@@ -1,8 +1,6 @@
 ---@meta
 -- iii framework type definitions for LuaLS
 
-
-
 -- ############
 -- DEVICE: GRID
 -- ############
@@ -44,8 +42,6 @@ function grid_size_x() end
 ---@return integer
 function grid_size_y() end
 
-
-
 -- ###########
 -- DEVICE: ARC
 -- ###########
@@ -83,8 +79,6 @@ function arc_led_all(z, rel) end
 
 ---Refresh LED values.
 function arc_refresh() end
-
-
 
 -- ####
 -- MIDI
@@ -124,8 +118,6 @@ function midi_note_off(note, vel, ch) end
 ---@param ch integer 1-16
 function midi_cc(cc, val, ch) end
 
-
-
 -- #####
 -- METRO
 -- #####
@@ -140,6 +132,7 @@ metro = {}
 
 ---The table returned by the metro.init function.
 ---@class Metro
+---@field id integer
 Metro = {}
 
 ---Initialize a metro m, with callback function, time in seconds, (optional)
@@ -168,8 +161,6 @@ function metro.free(id) end
 
 ---Free all metros.
 function metro.free_all() end
-
-
 
 -- ####
 -- SLEW
@@ -214,8 +205,6 @@ function slew.stop(id) end
 ---Stop and remove all slews.
 function slew.allstop() end
 
-
-
 -- ####
 -- PSET
 -- ####
@@ -237,8 +226,6 @@ function pset_delete(index) end
 ---@param index integer The preset slot index.
 ---@return table data The table of values stored at this index.
 function pset_read(index) end
-
-
 
 -- #####
 -- UTILS
@@ -289,4 +276,3 @@ function linlin(n, slo, shi, dlo, dhi) end
 ---@param max number
 ---@return number
 function wrap(n, min, max) end
-
