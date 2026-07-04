@@ -32,30 +32,43 @@ local SEQUENCE_LENGTH = 8
 local MAX_Y_VALUE = 8
 
 
-local page = 1
-local step = 1
+local cur_page = 1
+local cur_step = 1
 local step_count = 1
 local step_gate_mode = 1
 local last = 0
-local ticks = 0
 
+---@class Page
+---@field values table
+---@field event_grid function
+---@field redraw function
+-- TODO: better way to define these function fields?
+
+---@return Page
 local function new_page()
-	-- doing this so each page will have independent values arrays.
-	local values = {}
+	local page = {
+		values = {}
+	}
+
 	for i = 1, SEQUENCE_LENGTH do
-		values[i] = 1
+		page.values[i] = 1
 	end
 
-	local grid = function(x, y, z)
+	---@param self Page
+	---@param x integer
+	---@param y integer
+	---@param z integer
+	function page.event_grid(self, x, y, z)
 		-- button released; ignore.
 		if z == 0 then return end
 		-- discard out-of-range button presses.
 		if y <= MAX_Y_VALUE then return end
 		-- bottom row = 1; count up from there.
-		values[x] = 17 - y
+		self.values[x] = 17 - y
 	end
 
-	local redraw = function()
+	---@param self Page
+	function page.redraw(self)
 		-- highlight available interactive area.
 		for x = 1, SEQUENCE_LENGTH do
 			for y = 17 - MAX_Y_VALUE, 16 do
@@ -64,20 +77,16 @@ local function new_page()
 		end
 
 		-- draw active values for each step.
-		-- todo: consider tweaking this to show whole row. may also want different
+		-- TODO: consider tweaking this to show whole row. may also want different
 		-- visualizations for different pages, e.g. pulse whole row for note,
 		-- count up for stage_count, something else for stage_gate_mode.
 		for x = 1, SEQUENCE_LENGTH do
 			-- bottom row = 1; count up from there
-			grid_led(x, 17 - values[x], step==x and 15 or 5)
+			grid_led(x, 17 - self.values[x], cur_step==x and 15 or 5)
 		end
 	end
 
-	return {
-		values = values,
-		grid = grid,
-		redraw = redraw
-	}
+	return page
 end
 
 local page_note = new_page()
@@ -90,16 +99,16 @@ local function tick()
 	-- TODO: send note off to correct channel after changing channels
 	if last > 0 then midi_note_off(notes[last], MIDI_VEL, midi_ch) end
 	-- stay on current step for number of counts specified in stage_counts.
-	if step_count < page_stage_count.values[step] then
+	if step_count < page_stage_count.values[cur_step] then
 		step_count = step_count + 1
 	else
-		step = (step % SEQUENCE_LENGTH) + 1
+		cur_step = (cur_step % SEQUENCE_LENGTH) + 1
 		step_count = 1
 	end
 
 	-- use gate mode to determine whether next note should play.
-	local next_note = page_note.values[step]
-	step_gate_mode = page_stage_gate_mode.values[step]
+	local next_note = page_note.values[cur_step]
+	step_gate_mode = page_stage_gate_mode.values[cur_step]
 	if step_gate_mode==1 then
 		-- mode 1: note off; play nothing for whole duration of stage.
 		next_note = 0
@@ -134,14 +143,14 @@ function event_grid(x, y, z)
 
 	if y==1 then
 		-- top row; switch pages if in range.
-		if pages[x] ~= nil then page  = x end
+		if pages[x] ~= nil then cur_page  = x end
 		-- toggle midi clock in.
 		if x==16 then midi_clock_in = not midi_clock_in end
 	elseif y==2 then
 		-- second row; set midi channel
 		midi_ch = x
 	else
-		if pages[page] ~= nil then pages[page].grid(x, y, z) end
+		if pages[cur_page] ~= nil then pages[cur_page]:event_grid(x, y, z) end
 	end
 
 	redraw()
@@ -152,14 +161,14 @@ function redraw()
 	grid_led_all(0)
 	-- top row: draw active page.
 	for x = 1, #pages do
-		grid_led(x, 1, x == page and 10 or 2)
+		grid_led(x, 1, x == cur_page and 10 or 2)
 	end
 	-- draw midi_clock_in state (on = bright; todo maybe reverse this)
 	grid_led(16, 1, midi_clock_in and 10 or 2)
 	-- second row: draw midi channel.
 	grid_led(midi_ch, 2, 5)
 	-- trigger redraw logic for active page.
-	if pages[page] ~= nil then pages[page].redraw() end
+	if pages[cur_page] ~= nil then pages[cur_page]:redraw() end
 	grid_refresh()
 end
 
