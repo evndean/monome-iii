@@ -13,10 +13,10 @@ local speed = { 1, 1, 1, 1 } -- num ticks needed before advancing
 local count = { 0, 0, 0, 0 }
 local responsiveness = { 1, 10, 100, 500 }
 local brightness = 15
-local refresh_in_ms = 12
+local refresh_rate = 0.012 -- 12 ms
 local refresh = false
 
-function arc(ring, delta)
+function event_arc(ring, delta)
     speed[ring] = clamp(speed[ring] - delta, 1, 64)
 end
 
@@ -33,7 +33,7 @@ end
 local function redraw()
     if refresh then
         for ring = 1, 4 do
-            arc_led_all(ring, 0)
+            arc_led_ring(ring, 0)
             arc_led(ring, pos[ring], brightness)
         end
         arc_refresh()
@@ -44,7 +44,7 @@ end
 
 local function setup()
     for ring = 1, 4 do
-        arc_led_all(ring, 0)
+        arc_led_ring(ring, 0)
         arc_res(ring, responsiveness[ring])
     end
     arc_refresh()
@@ -52,5 +52,7 @@ end
 
 setup()
 
-metro.new(step_advance, refresh_in_ms)
-metro.new(redraw, refresh_in_ms)
+local m_advance = metro.init(step_advance, refresh_rate)
+local m_redraw = metro.init(redraw, refresh_rate)
+m_advance:start()
+m_redraw:start()

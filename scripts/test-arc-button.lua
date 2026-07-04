@@ -9,10 +9,31 @@ basic script to test some button functionality.
 local meta = 0
 local mode = 0
 local held = false
-local double_click_ms = 200
-local long_press_ms = 500
-local refresh_rate_ms = 12
+local double_click_s = 0.2
+local long_press_s = 0.5
+local refresh_rate = 0.012 -- 12 ms
 local refresh = false
+
+-- Log with a timestamp.
+local function log(s)
+    ps("[%f] %s", get_time(), s)
+end
+
+-- Stop and remove a metro.
+-- Returns a nil value so the source metro can be cleared out as well.
+---@param m Metro|nil
+---@return nil
+local function rm_metro(m)
+    if m then
+        m:stop()
+        metro.free(m.id)
+        -- note: this only removes the reference within this function.
+        -- callers will still need to reassign to nil, which is why we this
+        -- function returns nil.
+        m = nil
+    end
+    return nil
+end
 
 --[[
 #### single click
@@ -32,13 +53,12 @@ end
 ]]
 
 -- i tried defining this inside the function but it didn't seem to work.
+---@type Metro|nil
 local dc_metro
 
 local function dc_key_timer()
-    ps("[%d] single click", get_time())
-    metro.stop(dc_metro)
-    dc_metro = nil
-
+    log("single click")
+    dc_metro = rm_metro(dc_metro)
     mode = wrap(mode + 1, 0, 1)
     refresh = true
 end
@@ -46,11 +66,11 @@ end
 local function handle_double_click(z)
     if z == 1 then
         if dc_metro == nil then
-            dc_metro = metro.new(dc_key_timer, double_click_ms, 1)
+            dc_metro = metro.init(dc_key_timer, double_click_s, 1)
+            dc_metro:start()
         else
-            ps("[%d] double click", get_time())
-            metro.stop(dc_metro)
-            dc_metro = nil
+            log("double click")
+            dc_metro = rm_metro(dc_metro)
             meta = wrap(meta + 1, 0, 1)
             refresh = true
         end
@@ -63,26 +83,27 @@ end
 Copied from cycles (https://monome.org/docs/iii/library/cycles/).
 ]]
 
+---@type Metro|nil
 local lp_metro
 
 local function lp_key_timer()
-    ps("[%d] keylong!", get_time())
-    metro.stop(lp_metro)
-    lp_metro = nil
+    log("keylong")
+    lp_metro = rm_metro(lp_metro)
     held = true
     refresh = true
 end
 
 local function handle_long_press(z)
     if z == 1 then
-        lp_metro = metro.new(lp_key_timer, long_press_ms, 1)
+        lp_metro = metro.init(lp_key_timer, long_press_s, 1)
+        lp_metro:start()
     elseif lp_metro then
-        ps("[%d] keyshort", get_time())
-        metro.stop(lp_metro)
+        log("keyshort")
+        lp_metro = rm_metro(lp_metro)
         mode = wrap(mode + 1, 0, 1)
         refresh = true
     else
-        ps("[%d] end keylong", get_time())
+        log("end keylong")
         held = false
         refresh = true
     end
@@ -97,21 +118,18 @@ I tried writing the "stop" functions as a single function with a passed "m" para
 but lua passes arguments of number type by value, so the "reassign to nil" logic didn't work.
 ]]
 
+---@type Metro|nil
 local a_dc_metro
+
+---@type Metro|nil
 local a_lp_metro
 
 local function stop_dc_metro()
-    if a_dc_metro then
-        metro.stop(a_dc_metro)
-        a_dc_metro = nil
-    end
+    a_dc_metro = rm_metro(a_dc_metro)
 end
 
 local function stop_lp_metro()
-    if a_lp_metro then
-        metro.stop(a_lp_metro)
-        a_lp_metro = nil
-    end
+    a_lp_metro = rm_metro(a_lp_metro)
 end
 
 local function a_dc_key_timer()
@@ -119,7 +137,7 @@ local function a_dc_key_timer()
         return
     end
 
-    ps("[%d] single click", get_time())
+    log("single click")
     stop_dc_metro()
     stop_lp_metro()
 
@@ -128,7 +146,7 @@ local function a_dc_key_timer()
 end
 
 local function a_lp_key_timer()
-    ps("[%d] keylong!", get_time())
+    log("keylong")
     stop_dc_metro()
     stop_lp_metro()
 
@@ -139,13 +157,15 @@ end
 local function handle_all(z)
     if z == 1 then
         if a_lp_metro == nil then
-            a_lp_metro = metro.new(a_lp_key_timer, long_press_ms, 1)
+            a_lp_metro = metro.init(a_lp_key_timer, long_press_s, 1)
+            a_lp_metro:start()
         end
 
         if a_dc_metro == nil then
-            a_dc_metro = metro.new(a_dc_key_timer, long_press_ms + 1, 1)
+            a_dc_metro = metro.init(a_dc_key_timer, long_press_s + 0.001, 1)
+            a_dc_metro:start()
         else
-            ps("[%d] double click", get_time())
+            log("double click")
             stop_dc_metro()
             stop_lp_metro()
 
@@ -154,14 +174,14 @@ local function handle_all(z)
         end
     else
         if held then
-            ps("[%d] end keylong", get_time())
+            log("end keylong")
             stop_dc_metro()
             stop_lp_metro()
 
             held = false
             refresh = true
         elseif a_dc_metro then
-            ps("[%d] maybe double click", get_time())
+            log("maybe double click")
             stop_lp_metro()
         end
     end
@@ -171,8 +191,7 @@ end
 #### common
 ]]
 
-
-function arc_key(z)
+function event_arc_key(z)
     -- uncomment one of the functions below.
 
     -- handle_single_click(z)
@@ -188,7 +207,7 @@ local function redraw()
             level = 15
         end
         for ring = 1, 4 do
-            arc_led_all(ring, level)
+            arc_led_ring(ring, level)
         end
         arc_refresh()
         refresh = false
@@ -196,9 +215,19 @@ local function redraw()
 end
 
 local function setup()
+    -- reset arc resolution
+    for ring = 1, 4 do
+        arc_res(ring, 1)
+    end
+
+    -- reset LED levels
+    arc_led_all(0)
+    arc_refresh()
+
     refresh = true
 end
 
 setup()
 
-metro.new(redraw, refresh_rate_ms)
+local m = metro.init(redraw, refresh_rate)
+m:start()

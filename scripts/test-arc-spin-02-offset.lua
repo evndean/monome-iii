@@ -11,10 +11,10 @@ local offset = { 1, 1, 1, 1 }        -- float; where we are in a given tick.
 local speed = { 0.5, 0.5, 0.5, 0.5 } -- float; how far to advance per tick.
 local max_speed = 4
 local brightness = 15
-local refresh_rate_ms = 12
+local refresh_rate = 0.012 -- 12 ms
 local refresh = false
 
-function arc(ring, delta)
+function event_arc(ring, delta)
     speed[ring] = clamp(speed[ring] + delta / 32, -max_speed, max_speed)
 end
 
@@ -32,7 +32,7 @@ end
 local function redraw()
     if refresh then
         for ring = 1, 4 do
-            arc_led_all(ring, 0)
+            arc_led_ring(ring, 0)
             arc_led(ring, math.floor(offset[ring]), brightness)
         end
         arc_refresh()
@@ -42,7 +42,7 @@ end
 
 local function setup()
     for ring = 1, 4 do
-        arc_led_all(ring, 0)
+        arc_led_ring(ring, 0)
         arc_res(ring, 50)
     end
     arc_refresh()
@@ -50,5 +50,7 @@ end
 
 setup()
 
-metro.new(step_advance, refresh_rate_ms)
-metro.new(redraw, refresh_rate_ms)
+local m_advance = metro.init(step_advance, refresh_rate)
+local m_redraw = metro.init(redraw, refresh_rate)
+m_advance:start()
+m_redraw:start()
