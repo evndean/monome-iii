@@ -175,6 +175,14 @@ local function redraw()
 		arc_led(4, i, combined)
 	end
 
+	-- draw note markers
+	--
+	-- TODO: actually implement these; just placing them for now to see how
+	-- things look.
+	--
+	-- TODO: maybe make them blink when a midi note gets sent?
+	arc_led(4, 1, 15)
+
 	arc_refresh()
 end
 
