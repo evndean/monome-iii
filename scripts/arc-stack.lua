@@ -146,8 +146,8 @@ end
 
 -- create rings
 local r1 = Segment.new(1)
-local r2 = Segment.new(2)
-local r3 = Segment.new(3)
+local r2 = Segment.new(0.6)
+local r3 = Segment.new(0.2)
 
 local function redraw()
 	-- only redraw if we have something new to draw
