@@ -73,11 +73,13 @@ local refresh_rate = 0.012 -- 12 ms
 -- 3. update the state at each note based on the state of the combo ring.
 -- 4. if the value has changed, send a new note (also need to end the old one).
 
+local should_redraw = false
+
 ---Log formatted string with timestamp.
 ---@param formatted_string string
 ---@param ... any
 local function log(formatted_string, ...)
-	s = "[%f] " .. formatted_string
+	local s = "[%f] " .. formatted_string
 	ps(s, get_time(), ...)
 end
 
@@ -101,11 +103,15 @@ for i = 1, 64 do
 end
 
 local function redraw()
-	log("redraw")
+	-- only redraw if we have something new to draw
+	if not should_redraw then
+		return
+	end
+
+	should_redraw = false
 
 	-- get LEDs for rings 1-3
 	local r1_leds = r1:get_leds()
-	log("r1_leds: %s", table.concat(r1_leds, ","))
 
 	for i = 1, 64 do
 		-- draw rings 1-3
@@ -120,8 +126,6 @@ local function redraw()
 end
 
 local function setup()
-	log("setup")
-
 	-- reset arc sensitivity
 	for ring = 1, 4 do
 		arc_res(ring, 1)
@@ -130,11 +134,11 @@ local function setup()
 	-- zero out arc LEDs
 	arc_led_all(0)
 
-	-- redraw arcs (if we do this, can probably skip the "zero out" step above)
-	redraw()
+	-- trigger initial draw
+	should_redraw = true
 end
 
 setup()
 
--- local m = metro.init(redraw, refresh_rate)
--- m:start()
+local m = metro.init(redraw, refresh_rate)
+m:start()
