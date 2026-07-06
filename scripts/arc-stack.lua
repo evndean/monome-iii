@@ -102,6 +102,8 @@ function Segment.new(ring, speed)
 	self.offset = 0
 	self.leds = {}
 
+	-- initialize with half on, half off.
+	-- TODO: track values (i.e. start/stop, etc) and derive LEDs from that.
 	for i = 1, 64 do
 		self.leds[i] = i > 32 and 0 or 15
 	end
