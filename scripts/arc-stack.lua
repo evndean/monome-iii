@@ -98,7 +98,7 @@ end
 
 local function ring_get_led(self, segment)
 	-- log("ring_get_led: %d", segment)
-	local i_offset = math.floor(wrap(segment + self.offset, 1, #self.leds))
+	local i_offset = math.floor(wrap(segment - self.offset, 1, #self.leds))
 	return self.leds[i_offset]
 end
 
