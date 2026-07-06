@@ -83,20 +83,48 @@ local function log(formatted_string, ...)
 	ps(s, get_time(), ...)
 end
 
-local function set_ring_led(self, i, v)
+---Advance ring by internally-defined increment.
+local function ring_advance(self)
+	-- currently treating `offset` as "led offset"; may change later...
+	self.offset = wrap(self.offset + self.speed, 1, 64)
+
+	-- TODO: maybe move this, or tweak this logic...
+	should_redraw = true
+end
+
+local function ring_set_led(self, i, v)
 	self.leds[i] = v
 end
 
+local function ring_get_led(self, segment)
+	-- log("ring_get_led: %d", segment)
+	local i_offset = math.floor(wrap(segment + self.offset, 1, #self.leds))
+	return self.leds[i_offset]
+end
+
 -- TODO: is there a better way to do this?
-local function get_ring_leds(self)
-	return self.leds
+local function ring_get_leds(self)
+	-- i think that creating all of these temporary tables is causing the script to crash...
+	-- https://llllllll.co/t/iii-scripting/74312/18?u=evnander
+	local offset_leds = {}
+
+	for i = 1, #self.leds do
+		self:get_led(i)
+	end
+
+	return offset_leds
 end
 
 -- initialize ring 1
 local r1 = {
 	leds = {},
-	set_led = set_ring_led,
-	get_leds = get_ring_leds,
+	offset = 0,
+	speed = 1,
+
+	advance = ring_advance,
+	set_led = ring_set_led,
+	get_led = ring_get_led,
+	get_leds = ring_get_leds,
 }
 for i = 1, 64 do
 	r1:set_led(i, i > 32 and 0 or 15)
@@ -110,19 +138,25 @@ local function redraw()
 
 	should_redraw = false
 
-	-- get LEDs for rings 1-3
-	local r1_leds = r1:get_leds()
-
 	for i = 1, 64 do
+		local r1_led = r1:get_led(i)
+
 		-- draw rings 1-3
-		arc_led(1, i, r1_leds[i])
+		arc_led(1, i, r1_led)
 
 		-- combine rings 1-3 to determine ring 4
-		local combined = r1_leds[i] > 0 and 2 or 0
+		local combined = r1_led > 0 and 2 or 0
 		arc_led(4, i, combined)
 	end
 
 	arc_refresh()
+end
+
+local function tick()
+	r1:advance()
+
+	-- TODO: decouple redraw and advance?
+	redraw()
 end
 
 local function setup()
@@ -140,5 +174,5 @@ end
 
 setup()
 
-local m = metro.init(redraw, refresh_rate)
+local m = metro.init(tick, refresh_rate)
 m:start()
