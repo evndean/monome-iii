@@ -84,17 +84,20 @@ local function log(formatted_string, ...)
 end
 
 ---@class Segment
----@field offset number
+---@field ring integer
 ---@field speed number
+---@field offset number
 ---@field leds table
 local Segment = {}
 Segment.__index = Segment
 
 -- Constructor function
+---@param ring integer
 ---@param speed number
 ---@return Segment
-function Segment.new(speed)
+function Segment.new(ring, speed)
 	local self = setmetatable({}, Segment)
+	self.ring = ring
 	self.speed = speed
 	self.offset = 0
 	self.leds = {}
@@ -104,6 +107,18 @@ function Segment.new(speed)
 	end
 
 	return self
+end
+
+---@param ring integer
+---@param delta integer
+function Segment:handle_event_arc(ring, delta)
+	if ring ~= self.ring then
+		-- ignore
+		return
+	end
+
+	-- adjust speed
+	self.speed = clamp(self.speed + delta / 200, -3, 3)
 end
 
 function Segment:advance()
@@ -145,9 +160,15 @@ function Segment:get_leds()
 end
 
 -- create rings
-local r1 = Segment.new(1)
-local r2 = Segment.new(0.6)
-local r3 = Segment.new(0.2)
+local r1 = Segment.new(1, 1)
+local r2 = Segment.new(2, 0.6)
+local r3 = Segment.new(3, 0.2)
+
+function event_arc(ring, delta)
+	r1:handle_event_arc(ring, delta)
+	r2:handle_event_arc(ring, delta)
+	r3:handle_event_arc(ring, delta)
+end
 
 local function redraw()
 	-- only redraw if we have something new to draw
