@@ -83,8 +83,30 @@ local function log(formatted_string, ...)
 	ps(s, get_time(), ...)
 end
 
----Advance ring by internally-defined increment.
-local function ring_advance(self)
+---@class Segment
+---@field offset number
+---@field speed number
+---@field leds table
+local Segment = {}
+Segment.__index = Segment
+
+-- Constructor function
+---@param speed number
+---@return Segment
+function Segment.new(speed)
+	local self = setmetatable({}, Segment)
+	self.speed = speed
+	self.offset = 0
+	self.leds = {}
+
+	for i = 1, 64 do
+		self.leds[i] = i > 32 and 0 or 15
+	end
+
+	return self
+end
+
+function Segment:advance()
 	-- currently treating `offset` as "led offset"; may change later...
 	self.offset = wrap(self.offset + self.speed, 1, 64)
 
@@ -92,18 +114,25 @@ local function ring_advance(self)
 	should_redraw = true
 end
 
-local function ring_set_led(self, i, v)
-	self.leds[i] = v
+-- Set the LED value at segment i to value z.
+---@param i integer
+---@param z integer
+function Segment:set_led(i, z)
+	self.leds[i] = z
 end
 
-local function ring_get_led(self, segment)
-	-- log("ring_get_led: %d", segment)
-	local i_offset = math.floor(wrap(segment - self.offset, 1, #self.leds))
+-- Set the LED value at segment i.
+---@param i integer
+---@return integer led_value
+function Segment:get_led(i)
+	local i_offset = math.floor(wrap(i - self.offset, 1, #self.leds))
 	return self.leds[i_offset]
 end
 
--- TODO: is there a better way to do this?
-local function ring_get_leds(self)
+-- Get all LED values.
+---@return table leds
+function Segment:get_leds()
+	-- TODO: is there a better way to do this?
 	-- i think that creating all of these temporary tables is causing the script to crash...
 	-- https://llllllll.co/t/iii-scripting/74312/18?u=evnander
 	local offset_leds = {}
@@ -115,20 +144,10 @@ local function ring_get_leds(self)
 	return offset_leds
 end
 
--- initialize ring 1
-local r1 = {
-	leds = {},
-	offset = 0,
-	speed = 1,
-
-	advance = ring_advance,
-	set_led = ring_set_led,
-	get_led = ring_get_led,
-	get_leds = ring_get_leds,
-}
-for i = 1, 64 do
-	r1:set_led(i, i > 32 and 0 or 15)
-end
+-- create rings
+local r1 = Segment.new(1)
+local r2 = Segment.new(2)
+local r3 = Segment.new(3)
 
 local function redraw()
 	-- only redraw if we have something new to draw
@@ -140,12 +159,19 @@ local function redraw()
 
 	for i = 1, 64 do
 		local r1_led = r1:get_led(i)
+		local r2_led = r2:get_led(i)
+		local r3_led = r3:get_led(i)
 
 		-- draw rings 1-3
 		arc_led(1, i, r1_led)
+		arc_led(2, i, r2_led)
+		arc_led(3, i, r3_led)
 
 		-- combine rings 1-3 to determine ring 4
-		local combined = r1_led > 0 and 2 or 0
+		local combined = 0
+		combined = combined + (r1_led > 0 and 2 or 0)
+		combined = combined + (r2_led > 0 and 2 or 0)
+		combined = combined + (r3_led > 0 and 2 or 0)
 		arc_led(4, i, combined)
 	end
 
@@ -154,6 +180,8 @@ end
 
 local function tick()
 	r1:advance()
+	r2:advance()
+	r3:advance()
 
 	-- TODO: decouple redraw and advance?
 	redraw()
