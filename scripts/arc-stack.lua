@@ -8,7 +8,6 @@ initial thoughts:
 
 three arcs should be individual segments.
 one arc shoul be the combination.
-not sure whether that should be the first or the last tho.
 
 knob for individual segments will control speed.
 knob for combination could control... number of note trigger points maybe?
@@ -111,6 +110,8 @@ function RingSegmentController.new(ring, speed)
 	return self
 end
 
+-- Event handler for the event_arc callback, simply pass the values from that
+-- function, and controller will decide what to do.
 ---@param ring integer
 ---@param delta integer
 function RingSegmentController:handle_event_arc(ring, delta)
@@ -122,6 +123,7 @@ function RingSegmentController:handle_event_arc(ring, delta)
 	self.speed = clamp(self.speed + delta / 200, -3, 3)
 end
 
+-- Advance the playhead position by internally defined speed.
 function RingSegmentController:advance()
 	self.playhead_position = wrap(self.playhead_position + self.speed, 1, 64)
 
@@ -136,7 +138,7 @@ function RingSegmentController:set_led(i, z)
 	self.leds[i] = z
 end
 
--- Set the LED value at segment i.
+-- Get the LED value at segment i.
 ---@param i integer
 ---@return integer led_value
 function RingSegmentController:get_led(i)
@@ -159,7 +161,7 @@ function RingSegmentController:get_leds()
 	return offset_leds
 end
 
--- create rings
+-- Initialize ring controls.
 local r1 = RingSegmentController.new(1, 1)
 local r2 = RingSegmentController.new(2, 0.6)
 local r3 = RingSegmentController.new(3, 0.2)
