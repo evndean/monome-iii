@@ -133,9 +133,9 @@ function Trigger:redraw()
 end
 
 -- Initialize ring controls.
-local r1 = RingSegmentController.new(1, 1)
-local r2 = RingSegmentController.new(2, 0.6)
-local r3 = RingSegmentController.new(3, 0.2)
+local r1 = RingSegmentController.new(1, 0.25)
+local r2 = RingSegmentController.new(2, 0.1)
+local r3 = RingSegmentController.new(3, -0.075)
 
 -- Initialize notes.
 -- TODO: eventually want to make this runtime-configurable using arc encoder.
