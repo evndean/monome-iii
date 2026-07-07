@@ -97,6 +97,7 @@ end
 -- A single note activation point.
 ---@class Trigger
 ---@field position integer Point on the ring associated with the trigger.
+---@field last_active table Holds last activation values for ring segments.
 local Trigger = {}
 Trigger.__index = Trigger
 
@@ -106,6 +107,7 @@ Trigger.__index = Trigger
 function Trigger.new(position)
 	local self = setmetatable({}, Trigger)
 	self.position = position
+	self.last_active = { false, false, false }
 	return self
 end
 
@@ -126,6 +128,35 @@ end
 -- - store the previous values
 -- - store the previous midi note
 -- - access to the values emitted on the last tick by each ring
+
+---@param r1 RingSegmentController
+---@param r2 RingSegmentController
+---@param r3 RingSegmentController
+function Trigger:check_for_changes(r1, r2, r3)
+	local has_change = false
+
+	local r1_current = r1:get_active_at(self.position)
+	if r1_current ~= self.last_active[1] then
+		has_change = true
+	end
+	self.last_active[1] = r1_current
+
+	local r2_current = r2:get_active_at(self.position)
+	if r2_current ~= self.last_active[2] then
+		has_change = true
+	end
+	self.last_active[2] = r2_current
+
+	local r3_current = r3:get_active_at(self.position)
+	if r3_current ~= self.last_active[3] then
+		has_change = true
+	end
+	self.last_active[3] = r3_current
+
+	if has_change then
+		log("check_for_changes: change encountered")
+	end
+end
 
 function Trigger:redraw()
 	-- TODO: maybe blink on note send?
@@ -179,6 +210,8 @@ local function tick()
 	r1:advance()
 	r2:advance()
 	r3:advance()
+
+	n1:check_for_changes(r1, r2, r3)
 
 	-- TODO: decouple redraw and advance?
 	redraw()
