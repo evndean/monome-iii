@@ -83,23 +83,23 @@ local function log(formatted_string, ...)
 	ps(s, get_time(), ...)
 end
 
----@class Segment
+---@class RingSegmentController
 ---@field ring integer
 ---@field speed number
----@field offset number
+---@field playhead_position number
 ---@field leds table
-local Segment = {}
-Segment.__index = Segment
+local RingSegmentController = {}
+RingSegmentController.__index = RingSegmentController
 
 -- Constructor function
 ---@param ring integer
 ---@param speed number
----@return Segment
-function Segment.new(ring, speed)
-	local self = setmetatable({}, Segment)
+---@return RingSegmentController
+function RingSegmentController.new(ring, speed)
+	local self = setmetatable({}, RingSegmentController)
 	self.ring = ring
 	self.speed = speed
-	self.offset = 0
+	self.playhead_position = 1
 	self.leds = {}
 
 	-- initialize with half on, half off.
@@ -113,19 +113,17 @@ end
 
 ---@param ring integer
 ---@param delta integer
-function Segment:handle_event_arc(ring, delta)
+function RingSegmentController:handle_event_arc(ring, delta)
 	if ring ~= self.ring then
 		-- ignore
 		return
 	end
 
-	-- adjust speed
 	self.speed = clamp(self.speed + delta / 200, -3, 3)
 end
 
-function Segment:advance()
-	-- currently treating `offset` as "led offset"; may change later...
-	self.offset = wrap(self.offset + self.speed, 1, 64)
+function RingSegmentController:advance()
+	self.playhead_position = wrap(self.playhead_position + self.speed, 1, 64)
 
 	-- TODO: maybe move this, or tweak this logic...
 	should_redraw = true
@@ -134,21 +132,21 @@ end
 -- Set the LED value at segment i to value z.
 ---@param i integer
 ---@param z integer
-function Segment:set_led(i, z)
+function RingSegmentController:set_led(i, z)
 	self.leds[i] = z
 end
 
 -- Set the LED value at segment i.
 ---@param i integer
 ---@return integer led_value
-function Segment:get_led(i)
-	local i_offset = math.floor(wrap(i - self.offset, 1, #self.leds))
+function RingSegmentController:get_led(i)
+	local i_offset = math.floor(wrap(i - self.playhead_position, 1, #self.leds))
 	return self.leds[i_offset]
 end
 
 -- Get all LED values.
 ---@return table leds
-function Segment:get_leds()
+function RingSegmentController:get_leds()
 	-- TODO: is there a better way to do this?
 	-- i think that creating all of these temporary tables is causing the script to crash...
 	-- https://llllllll.co/t/iii-scripting/74312/18?u=evnander
@@ -162,9 +160,9 @@ function Segment:get_leds()
 end
 
 -- create rings
-local r1 = Segment.new(1, 1)
-local r2 = Segment.new(2, 0.6)
-local r3 = Segment.new(3, 0.2)
+local r1 = RingSegmentController.new(1, 1)
+local r2 = RingSegmentController.new(2, 0.6)
+local r3 = RingSegmentController.new(3, 0.2)
 
 function event_arc(ring, delta)
 	r1:handle_event_arc(ring, delta)
