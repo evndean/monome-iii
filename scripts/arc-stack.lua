@@ -86,7 +86,7 @@ end
 ---@field ring integer Ring number associated with the controller, 1-4
 ---@field speed number Rate of rotation
 ---@field size integer Number of LED segments considered "active"
----@field playhead_position number Where a 1-indexed trigger is when reading from the activation slice
+---@field start number Where the "active" segment begins (float, 1-64)
 local RingSegmentController = {}
 RingSegmentController.__index = RingSegmentController
 
@@ -99,7 +99,7 @@ function RingSegmentController.new(ring, speed)
 	self.ring = ring
 	self.speed = speed
 	self.size = 32 -- TODO: consider making size configurable.
-	self.playhead_position = 1
+	self.start = 1
 	return self
 end
 
@@ -118,7 +118,7 @@ end
 
 -- Advance the playhead position by internally defined speed.
 function RingSegmentController:advance()
-	self.playhead_position = wrap(self.playhead_position + self.speed, 1, 64)
+	self.start = wrap(self.start + self.speed, 1, 64)
 
 	-- TODO: maybe move this, or tweak this logic...
 	should_redraw = true
@@ -128,7 +128,7 @@ end
 ---@param i integer
 ---@return integer led_value
 function RingSegmentController:get_led(i)
-	local i_offset = math.floor(wrap(i - self.playhead_position, 1, 64))
+	local i_offset = math.floor(wrap(i - self.start, 1, 64))
 	return i_offset < self.size and 15 or 0
 end
 
