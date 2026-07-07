@@ -57,7 +57,7 @@ function RingSegmentController:handle_event_arc(ring, delta)
 		return
 	end
 
-	self.speed = clamp(self.speed + delta / 500, -3, 3)
+	self.speed = clamp(self.speed + delta / 250, -3, 3)
 end
 
 -- Advance the playhead position by internally defined speed.
@@ -153,7 +153,6 @@ local function redraw()
 	r1:redraw()
 	r2:redraw()
 	r3:redraw()
-	arc_refresh()
 
 	-- only redraw if we have something new to draw
 	if not should_redraw_trigger_ring then
@@ -186,9 +185,12 @@ local function tick()
 end
 
 local function setup()
-	-- reset arc sensitivity
+	-- reset arc sensitivity.
+	-- making this somewhat coarse to try to avoid triggering more of the
+	-- "arc event queue full!" error messages.
+	-- TODO: come back and properly fix the "arc event queue full!" errors.
 	for ring = 1, 4 do
-		arc_res(ring, 1)
+		arc_res(ring, 5)
 	end
 
 	-- zero out arc LEDs
