@@ -66,12 +66,19 @@ function RingSegmentController:advance()
 	should_redraw = true
 end
 
+-- Returns whether the controller is currently active at point x.
+---@param x integer
+---@return boolean
+function RingSegmentController:get_active_at(x)
+	local i_offset = math.floor(wrap(x - self.start, 1, 64))
+	return i_offset < self.size
+end
+
 -- Get the LED value at segment i.
 ---@param i integer
 ---@return integer led_value
 function RingSegmentController:get_led(i)
-	local i_offset = math.floor(wrap(i - self.start, 1, 64))
-	return i_offset < self.size and 15 or 0
+	return self:get_active_at(i) and 15 or 0
 end
 
 -- Get all LED values.
@@ -87,6 +94,13 @@ function RingSegmentController:get_leds()
 	end
 
 	return offset_leds
+end
+
+function RingSegmentController:redraw()
+	for i = 1, 64 do
+		local intensity = self:get_active_at(i) and 15 or 0
+		arc_led(self.ring, i, intensity)
+	end
 end
 
 -- A single note activation point.
@@ -151,21 +165,17 @@ local function redraw()
 
 	should_redraw = false
 
+	-- redraw segment rings
+	r1:redraw()
+	r2:redraw()
+	r3:redraw()
+
+	-- redraw combined, trigger ring
 	for i = 1, 64 do
-		local r1_led = r1:get_led(i)
-		local r2_led = r2:get_led(i)
-		local r3_led = r3:get_led(i)
-
-		-- draw rings 1-3
-		arc_led(1, i, r1_led)
-		arc_led(2, i, r2_led)
-		arc_led(3, i, r3_led)
-
-		-- combine rings 1-3 to determine ring 4
-		local combined = 0
-		combined = combined + (r1_led > 0 and 2 or 0)
-		combined = combined + (r2_led > 0 and 2 or 0)
-		combined = combined + (r3_led > 0 and 2 or 0)
+		local r1_intensity = r1:get_active_at(i) and 2 or 0
+		local r2_intensity = r2:get_active_at(i) and 2 or 0
+		local r3_intensity = r3:get_active_at(i) and 2 or 0
+		local combined = r1_intensity + r2_intensity + r3_intensity
 		arc_led(4, i, combined)
 	end
 
