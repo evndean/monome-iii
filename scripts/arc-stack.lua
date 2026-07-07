@@ -14,7 +14,7 @@ knob for combination could control... number of note trigger points maybe?
 ]]
 
 local refresh_rate = 0.012 -- 12 ms
-local should_redraw = false
+local should_redraw_trigger_ring = false
 
 ---Log formatted string with timestamp.
 ---@param formatted_string string
@@ -29,6 +29,7 @@ end
 ---@field speed number Rate of rotation
 ---@field size integer Number of LED segments considered "active"
 ---@field start number Where the "active" segment start point is currently
+---@field should_redraw boolean
 local RingSegmentController = {}
 RingSegmentController.__index = RingSegmentController
 
@@ -42,6 +43,7 @@ function RingSegmentController.new(ring, speed)
 	self.speed = speed
 	self.size = 32 -- TODO: consider making size configurable.
 	self.start = 1
+	self.should_redraw = true -- trigger initial draw.
 	return self
 end
 
@@ -55,15 +57,20 @@ function RingSegmentController:handle_event_arc(ring, delta)
 		return
 	end
 
-	self.speed = clamp(self.speed + delta / 200, -3, 3)
+	self.speed = clamp(self.speed + delta / 500, -3, 3)
 end
 
 -- Advance the playhead position by internally defined speed.
 function RingSegmentController:advance()
-	self.start = wrap(self.start + self.speed, 1, 64)
+	local old_start = self.start
+	local new_start = wrap(self.start + self.speed, 1, 64)
+	self.start = new_start
 
-	-- TODO: maybe move this, or tweak this logic...
-	should_redraw = true
+	-- only redraw if we've moved forward one segment.
+	if math.floor(old_start) ~= math.floor(new_start) then
+		self.should_redraw = true
+		should_redraw_trigger_ring = true
+	end
 end
 
 -- Returns whether the controller is currently active at point x.
@@ -75,6 +82,12 @@ function RingSegmentController:get_active_at(x)
 end
 
 function RingSegmentController:redraw()
+	if not self.should_redraw then
+		-- nothing to do
+		return
+	end
+	self.should_redraw = false
+
 	for i = 1, 64 do
 		local intensity = self:get_active_at(i) and 15 or 0
 		arc_led(self.ring, i, intensity)
@@ -136,17 +149,17 @@ function event_arc(ring, delta)
 end
 
 local function redraw()
-	-- only redraw if we have something new to draw
-	if not should_redraw then
-		return
-	end
-
-	should_redraw = false
-
 	-- redraw segment rings
 	r1:redraw()
 	r2:redraw()
 	r3:redraw()
+	arc_refresh()
+
+	-- only redraw if we have something new to draw
+	if not should_redraw_trigger_ring then
+		return
+	end
+	should_redraw_trigger_ring = false
 
 	-- redraw combined, trigger ring
 	for i = 1, 64 do
@@ -182,7 +195,7 @@ local function setup()
 	arc_led_all(0)
 
 	-- trigger initial draw
-	should_redraw = true
+	should_redraw_trigger_ring = true
 end
 
 setup()
