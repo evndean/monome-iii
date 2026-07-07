@@ -83,10 +83,10 @@ local function log(formatted_string, ...)
 end
 
 ---@class RingSegmentController
----@field ring integer Ring number associated with the controller, 1-4
+---@field ring integer Ring number associated with the controller
 ---@field speed number Rate of rotation
 ---@field size integer Number of LED segments considered "active"
----@field start number Where the "active" segment begins (float, 1-64)
+---@field start number Where the "active" segment start point is currently
 local RingSegmentController = {}
 RingSegmentController.__index = RingSegmentController
 
@@ -152,6 +152,7 @@ local r1 = RingSegmentController.new(1, 1)
 local r2 = RingSegmentController.new(2, 0.6)
 local r3 = RingSegmentController.new(3, 0.2)
 
+-- Initialize arc event handler.
 function event_arc(ring, delta)
 	r1:handle_event_arc(ring, delta)
 	r2:handle_event_arc(ring, delta)
