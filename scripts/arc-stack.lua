@@ -74,28 +74,6 @@ function RingSegmentController:get_active_at(x)
 	return i_offset < self.size
 end
 
--- Get the LED value at segment i.
----@param i integer
----@return integer led_value
-function RingSegmentController:get_led(i)
-	return self:get_active_at(i) and 15 or 0
-end
-
--- Get all LED values.
----@return table leds
-function RingSegmentController:get_leds()
-	-- TODO: is there a better way to do this?
-	-- i think that creating all of these temporary tables is causing the script to crash...
-	-- https://llllllll.co/t/iii-scripting/74312/18?u=evnander
-	local offset_leds = {}
-
-	for i = 1, 64 do
-		self:get_led(i)
-	end
-
-	return offset_leds
-end
-
 function RingSegmentController:redraw()
 	for i = 1, 64 do
 		local intensity = self:get_active_at(i) and 15 or 0
