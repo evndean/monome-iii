@@ -83,10 +83,10 @@ local function log(formatted_string, ...)
 end
 
 ---@class RingSegmentController
----@field ring integer
----@field speed number
----@field playhead_position number
----@field leds table
+---@field ring integer Ring number associated with the controller, 1-4
+---@field speed number Rate of rotation
+---@field size integer Number of LED segments considered "active"
+---@field playhead_position number Where a 1-indexed trigger is when reading from the activation slice
 local RingSegmentController = {}
 RingSegmentController.__index = RingSegmentController
 
@@ -98,15 +98,8 @@ function RingSegmentController.new(ring, speed)
 	local self = setmetatable({}, RingSegmentController)
 	self.ring = ring
 	self.speed = speed
+	self.size = 32 -- TODO: consider making size configurable.
 	self.playhead_position = 1
-	self.leds = {}
-
-	-- initialize with half on, half off.
-	-- TODO: track values (i.e. start/stop, etc) and derive LEDs from that.
-	for i = 1, 64 do
-		self.leds[i] = i > 32 and 0 or 15
-	end
-
 	return self
 end
 
@@ -131,19 +124,12 @@ function RingSegmentController:advance()
 	should_redraw = true
 end
 
--- Set the LED value at segment i to value z.
----@param i integer
----@param z integer
-function RingSegmentController:set_led(i, z)
-	self.leds[i] = z
-end
-
 -- Get the LED value at segment i.
 ---@param i integer
 ---@return integer led_value
 function RingSegmentController:get_led(i)
-	local i_offset = math.floor(wrap(i - self.playhead_position, 1, #self.leds))
-	return self.leds[i_offset]
+	local i_offset = math.floor(wrap(i - self.playhead_position, 1, 64))
+	return i_offset < self.size and 15 or 0
 end
 
 -- Get all LED values.
@@ -154,7 +140,7 @@ function RingSegmentController:get_leds()
 	-- https://llllllll.co/t/iii-scripting/74312/18?u=evnander
 	local offset_leds = {}
 
-	for i = 1, #self.leds do
+	for i = 1, 64 do
 		self:get_led(i)
 	end
 
