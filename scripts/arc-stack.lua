@@ -147,10 +147,34 @@ function RingSegmentController:get_leds()
 	return offset_leds
 end
 
+-- A single note activation point.
+---@class Trigger
+---@field position integer Point on the ring associated with the trigger.
+local Trigger = {}
+Trigger.__index = Trigger
+
+-- Contructor function.
+---@param position integer
+---@return Trigger
+function Trigger.new(position)
+	local self = setmetatable({}, Trigger)
+	self.position = position
+	return self
+end
+
+function Trigger:redraw()
+	-- TODO: maybe blink on note send?
+	arc_led(4, self.position, 15)
+end
+
 -- Initialize ring controls.
 local r1 = RingSegmentController.new(1, 1)
 local r2 = RingSegmentController.new(2, 0.6)
 local r3 = RingSegmentController.new(3, 0.2)
+
+-- Initialize notes.
+-- TODO: eventually want to make this runtime-configurable using arc encoder.
+local n1 = Trigger.new(1)
 
 -- Initialize arc event handler.
 function event_arc(ring, delta)
@@ -186,12 +210,7 @@ local function redraw()
 	end
 
 	-- draw note markers
-	--
-	-- TODO: actually implement these; just placing them for now to see how
-	-- things look.
-	--
-	-- TODO: maybe make them blink when a midi note gets sent?
-	arc_led(4, 1, 15)
+	n1:redraw()
 
 	arc_refresh()
 end
